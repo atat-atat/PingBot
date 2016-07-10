@@ -1,0 +1,15 @@
+{
+	"client_id": "", 
+	"token": "", 
+	"osu_key": "", 
+	"games": [], 
+	"myanimelist": {"password": "", "username": ""}, 
+	"bot_owners": [""], 
+	"username": "PingBot", 
+	"mention_messages": [], 
+	"prefix": "$", 
+	"imgur": {
+		"client_id": "", 
+		"client_secret": ""
+	}
+}

@@ -1,0 +1,16 @@
+{
+	"nsfw_types": {}, 
+	"servers": {
+	}, 
+	"name": "NSFW Commands", 
+	"author": "atat", 
+	"messages": {
+		"no_nsfw_in_chan": "NSFW commands are not allowed in this channel.", 
+		"unknown_type": "That type is not included in the NSFW types list (I will continue with this process.)", 
+		"subtexts": ["You're welcome", "Have fun", "Here you go"]
+	}, 
+	"description": "A cog full of NSFW commands.", 
+	"version": "0.9", 
+	"nsfw_directory": "./user/cogs/nsfw/collection", 
+	"save_files": false
+}
