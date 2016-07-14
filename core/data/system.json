@@ -1,1 +1,1 @@
-{"system_version": "2.3.4", "avatar": "", "no_disable": ["eval", "reload", "help", "commands", "toggle-command", "toggle_command", "set-log", "set_log", "set-status", "set_status"], "startup": true}
+{"system_version": "2.5.1", "avatar": "", "no_disable": ["eval", "reload", "help", "commands", "toggle-command", "toggle_command", "set-log", "set_log", "set-status", "set_status"], "startup": true}

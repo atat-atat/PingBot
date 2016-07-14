@@ -1081,7 +1081,7 @@ Contributed  {}
 			else:
 				start_fmt = pingbot.get_event_message("start_fmt_no_nick").format(before)
 
-			if status_channel != None:
+			if status_channel != None and not before.bot:
 				await text(start_fmt + pingbot.get_event_message("member_game_update").format(after.game.name, self.get_gameplay_count(after.server.id, after.id, after.game.name)), channel=status_channel, emoji="member_update_game", no_mention=True)
 				#await pingbot.Utils(self.bot).text_status(start_fmt + " is now playing *{}* (launched `{}` times!)".format(before.name, after.game.name, self.get_gameplay_count(after.server.id, after.id, after.game.name)), status_channel, emoji=emoji["member_update_game"])
 

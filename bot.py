@@ -125,44 +125,45 @@ async def on_command(command, ctx): #log executed commands
 
 	log.info('{0.timestamp}: {0.author} in {1}: {0.content}'.format(ctx.message, ctx.message.channel))
 
-@client.event
-async def on_command_error(error, ctx):
-	if isinstance(error, commands.errors.CheckFailure):
-		await text(pingbot.get_error("no_permission"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
-	elif isinstance(error, commands.NoPrivateMessage):
-		await text(pingbot.get_error("no_pm"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
-	elif isinstance(error, commands.MissingRequiredArgument):
-		if ctx.invoked_subcommand:
-			await send_help_message(ctx, command=ctx.invoked_subcommand, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
+if not debug:
+	@client.event
+	async def on_command_error(error, ctx):
+		if isinstance(error, commands.errors.CheckFailure):
+			await text(pingbot.get_error("no_permission"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
+		elif isinstance(error, commands.NoPrivateMessage):
+			await text(pingbot.get_error("no_pm"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
+		elif isinstance(error, commands.MissingRequiredArgument):
+			if ctx.invoked_subcommand:
+				await send_help_message(ctx, command=ctx.invoked_subcommand, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
+			else:
+				await send_help_message(ctx, command=ctx.command, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
+		elif isinstance(error, commands.BadArgument):
+			if ctx.invoked_subcommand:
+				await send_help_message(ctx, command=ctx.invoked_subcommand, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
+			else:
+				await send_help_message(ctx, command=ctx.command, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
+		elif isinstance(error, commands.errors.CommandNotFound):
+			pass #ignore no command errors
+		elif isinstance(error, commands.DisabledCommand):
+			await text(pingbot.get_message("command_disabled"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
+		elif isinstance(error, pingbot.errors.CommandDisabledUser):
+			await text(pingbot.get_message("command_disabled_user"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
+		
 		else:
-			await send_help_message(ctx, command=ctx.command, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
-	elif isinstance(error, commands.BadArgument):
-		if ctx.invoked_subcommand:
-			await send_help_message(ctx, command=ctx.invoked_subcommand, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
-		else:
-			await send_help_message(ctx, command=ctx.command, channel=ctx.message.channel, mention_user=ctx.message.author, no_pm=True, bot=client)
-	elif isinstance(error, commands.errors.CommandNotFound):
-		pass #ignore no command errors
-	elif isinstance(error, commands.DisabledCommand):
-		await text(pingbot.get_message("command_disabled"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
-	elif isinstance(error, pingbot.errors.CommandDisabledUser):
-		await text(pingbot.get_message("command_disabled_user"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
-	
-	else:
-		pingbot.Utils().cprint("red", pingbot.errors.get_traceback())
-	
-	#	if "error_channel" not in settings:
-	#		await text(pingbot.get_message("error").format(pingbot.errors.get_traceback()), channel=ctx.message.channel, emoji="error", no_mention=True)
-	#		pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.errors.get_traceback()))
-	#	else:
-	#		await text(pingbot.get_message("error_no_extra"), channel=ctx.message.channel, no_mention=True, emoji="error")
-	#		if ctx.message.channel.is_private:
-	#			await text(pingbot.get_message("error_extra_pm").format(ctx, pingbot.errors.get_traceback()), channel=settings["error_channel"], emoji="error", no_mention=True)
-	#		else:
-	#			await text(pingbot.get_message("error_extra").format(ctx, pingbot.errors.get_traceback()), channel=settings["error_channel"], emoji="error", no_mention=True)
-	#		pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.errors.get_traceback()))
+			pingbot.Utils().cprint("red", pingbot.errors.get_traceback())
+		
+		#	if "error_channel" not in settings:
+		#		await text(pingbot.get_message("error").format(pingbot.errors.get_traceback()), channel=ctx.message.channel, emoji="error", no_mention=True)
+		#		pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.errors.get_traceback()))
+		#	else:
+		#		await text(pingbot.get_message("error_no_extra"), channel=ctx.message.channel, no_mention=True, emoji="error")
+		#		if ctx.message.channel.is_private:
+		#			await text(pingbot.get_message("error_extra_pm").format(ctx, pingbot.errors.get_traceback()), channel=settings["error_channel"], emoji="error", no_mention=True)
+		#		else:
+		#			await text(pingbot.get_message("error_extra").format(ctx, pingbot.errors.get_traceback()), channel=settings["error_channel"], emoji="error", no_mention=True)
+		#		pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.errors.get_traceback()))
 
-	#	log.error('{0.timestamp}: {1}'.format(ctx.message, pingbot.errors.get_traceback()))
+		#	log.error('{0.timestamp}: {1}'.format(ctx.message, pingbot.errors.get_traceback()))
 
 
 @client.event

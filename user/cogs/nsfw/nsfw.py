@@ -1,5 +1,6 @@
 from discord.ext import commands
 from core import pingbot
+from core.pingbot.messages import text
 import aiohttp
 import random
 from urllib.parse import quote as urlquote
@@ -60,6 +61,7 @@ class NSFW:
         self.bot = bot
 
     @commands.command(name="set-nsfw", aliases=["set_nsfw"], pass_context=True, no_pm=True)
+    @pingbot.permissions.has_permissions(manage_server=True, manage_channel=True)
     async def set_nsfw_channel(self, ctx):
         """
         🍆 Sets the NSFW channel.
@@ -69,9 +71,6 @@ class NSFW:
         EXAMPLE: set-nsfw
         --------------------
         """
-        if not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-            await pingbot.Utils(self.bot, ctx.message).text(no_perm, emoji=emoji["failure"])
-            return
         nsfw_config = pingbot.Config(nsfw_config_dir).load_json()
         if ctx.message.server.id not in nsfw_config["servers"]: #if the server has not been added to the servers list.
             nsfw_config["servers"][ctx.message.server.id] = {}
@@ -92,6 +91,7 @@ class NSFW:
             return
 
     @commands.command(name="set-auto-nsfw", pass_context=True, no_pm=True)
+    @pingbot.permissions.has_permissions(manage_server=True, manage_channel=True)
     async def _set_auto_nsfw_channel(self, ctx, nsfw_type : str='default'):
         """
         🍆 Sets the automatic NSFW-material-provider channel.
@@ -101,10 +101,6 @@ class NSFW:
         EXAMPLE: set-auto-nsfw
         --------------------
         """
-        if not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-            await pingbot.Utils(self.bot, ctx.message).text(no_perm, emoji=emoji["failure"])
-            return
-
         nsfw_config = pingbot.Config(nsfw_config_dir).load_json()
         if ctx.message.server.id not in nsfw_config["servers"]: #if the server has not been added to the servers list.
             nsfw_config["servers"][ctx.message.server.id] = {}
@@ -130,6 +126,7 @@ class NSFW:
             return
 
     @commands.command(name="auto-nsfw-type", aliases=['set-auto-nsfw-type'], pass_context=True, no_pm=True)
+    @pingbot.permissions.has_permissions(manage_server=True, manage_channel=True)
     async def _set_auto_nsfw_type(self, ctx, nsfw_type : str):
         """
         🍆 Sets the auto-NSFW channel type.
@@ -141,9 +138,6 @@ class NSFW:
         """
         self.install_auto_nsfw_ifno(ctx)
         nsfw_config = pingbot.Config(nsfw_config_dir).load_json()
-        if not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-            await pingbot.Utils(self.bot, ctx.message).text(no_perm, emoji=emoji["failure"])
-            return
 
         if self.is_auto_nsfw_chan(ctx):
             if nsfw_type not in nsfw_config["nsfw_types"]:
@@ -157,7 +151,8 @@ class NSFW:
             await pingbot.Utils(self.bot, ctx.message).text("This channel must be an auto-NSFW channel.", emoji=emoji["failure"])
             return
 
-    @commands.command(name="nsfw-types", pass_context=True)
+    @commands.command(name="nsfw-types", aliases=["nsfw_types"], pass_context=True)
+    @pingbot.permissions.has_permissions()
     async def _return_nsfw_types(self, ctx):
         """
         🍆 Gives a list of NSFW types.
@@ -171,6 +166,7 @@ class NSFW:
         await pingbot.Utils(self.bot, ctx.message).text("There are {} auto-NSFW types: {}".format(len(nsfw_types.keys()), ', '.join(nsfw_types.keys())))
 
     @commands.command(name="nsfw-cleanup", pass_context=True)
+    @pingbot.permissions.has_permissions()
     async def clean_nsfw_content(self, ctx, amount : int=500):
         """
         🍆 Clears the past 500 messages that may have contained NSFW content.
@@ -180,8 +176,6 @@ class NSFW:
         EXAMPLE: nsfw-cleanup
         --------------------
         """
-        if await self.is_disabled_or_no_nsfw(ctx, 'nsfw-cleanup'):
-            return
 
         def is_msg(m):
             if m.author == self.bot.user:
@@ -392,11 +386,14 @@ class NSFW:
         EXAMPLE: e621 dragon
         --------------------
         """
-        url = "https://e621.net/post/index.json?limit=1"
-        await text("This feature is still being worked on.", emoji="failure")
-        #https://e621.net/help/show/api
-
-        #TODO: actually work on command
+        tag = urlquote(keyword)
+        url = "https://e621.net/post/index.json?tags={}&limit=10".format(tag)
+        resp = await pingbot.WT().async_json_content(url)
+        if len(resp) == 0:
+            await text(pingbot.get_message("e621_returned_none", direc=nsfw_config_dir), emoji="failure")
+            return
+        result = random.choice(resp)
+        await text(result["file_url"], emoji=":dog:", no_bold=True)
 
     @commands.command(name="gonewild", pass_context=True)
     async def _gonewild(self, ctx):
@@ -597,52 +594,55 @@ class NSFW:
         print("Task started!")
         await self.bot.wait_until_ready()
         while not self.bot.is_closed:
-            #print("Task: " + channel)
-            
-            nsfw_config = pingbot.Config('./user/cogs/nsfw/nsfw_info.json').load_json()
-            for server in nsfw_config["servers"]:
-                self.install_auto_nsfw_ifno(server_id=server)
+            try:
+                #print("Task: " + channel)
+                
                 nsfw_config = pingbot.Config('./user/cogs/nsfw/nsfw_info.json').load_json()
-                for channel in nsfw_config["servers"][server]["auto_nsfw_channels"]:
-                    nsfw_types = pingbot.Config(nsfw_config_dir).load_json()["nsfw_types"]
-                    nsfw_type = nsfw_config["servers"][server]["auto_nsfw_channels"][channel]
-                    channel = discord.Object(id=channel)
-                    try:
-                        if nsfw_type in nsfw_types:
-                            nsfw_type = pingbot.Config(nsfw_config_dir).load_json()["nsfw_types"][nsfw_type]
-                            link1 = self.return_subreddit_result(random.choice(nsfw_type))
-                            link2 = self.return_subreddit_result(random.choice(nsfw_type))
-                            link3 = self.return_subreddit_result(random.choice(nsfw_type))
-                        else:
-                            link1 = self.return_subreddit_result(random.choice(nsfw_type))
-                            link2 = self.return_subreddit_result(random.choice(nsfw_type))
-                            link3 = self.return_subreddit_result(random.choice(nsfw_type))
-
-                        if link1 == None:
-                            link1 = self.return_subreddit_result(nsfw_type)
-                        if link2 == None:
-                            link2 = self.return_subreddit_result(nsfw_type)
-                        if link3 == None:
-                            link3 = self.return_subreddit_result(nsfw_type)
-
+                for server in nsfw_config["servers"]:
+                    self.install_auto_nsfw_ifno(server_id=server)
+                    nsfw_config = pingbot.Config('./user/cogs/nsfw/nsfw_info.json').load_json()
+                    for channel in nsfw_config["servers"][server]["auto_nsfw_channels"]:
+                        nsfw_types = pingbot.Config(nsfw_config_dir).load_json()["nsfw_types"]
+                        nsfw_type = nsfw_config["servers"][server]["auto_nsfw_channels"][channel]
+                        channel = discord.Object(id=channel)
                         try:
-                            link1_l = link1.link
-                        except AttributeError:
-                            link1_l = "Unknown link"
+                            if nsfw_type in nsfw_types:
+                                nsfw_type = pingbot.Config(nsfw_config_dir).load_json()["nsfw_types"][nsfw_type]
+                                link1 = self.return_subreddit_result(random.choice(nsfw_type))
+                                link2 = self.return_subreddit_result(random.choice(nsfw_type))
+                                link3 = self.return_subreddit_result(random.choice(nsfw_type))
+                            else:
+                                link1 = self.return_subreddit_result(random.choice(nsfw_type))
+                                link2 = self.return_subreddit_result(random.choice(nsfw_type))
+                                link3 = self.return_subreddit_result(random.choice(nsfw_type))
 
-                        try:
-                            link2_l = link2.link
-                        except AttributeError:
-                            link2_l = "Unknown link"
+                            if link1 == None:
+                                link1 = self.return_subreddit_result(nsfw_type)
+                            if link2 == None:
+                                link2 = self.return_subreddit_result(nsfw_type)
+                            if link3 == None:
+                                link3 = self.return_subreddit_result(nsfw_type)
 
-                        try:
-                            link3_l = link3.link
-                        except AttributeError:
-                            link3_l = "Unknown link"
+                            try:
+                                link1_l = link1.link
+                            except AttributeError:
+                                link1_l = "Unknown link"
 
-                        await self.bot.send_message(channel, '\n'.join([link1_l, link2_l, link3_l]))
-                    except imgurpython.helpers.error.ImgurClientError as e:
-                        await self.bot.send_message(channel, "Imgur client error occurred. \n{}".format(e.__str__))
+                            try:
+                                link2_l = link2.link
+                            except AttributeError:
+                                link2_l = "Unknown link"
+
+                            try:
+                                link3_l = link3.link
+                            except AttributeError:
+                                link3_l = "Unknown link"
+
+                            await self.bot.send_message(channel, '\n'.join([link1_l, link2_l, link3_l]))
+                        except imgurpython.helpers.error.ImgurClientError as e:
+                            await self.bot.send_message(channel, "Imgur client error occurred. \n{}".format(e.__str__))
+            except Exception as e:
+                pingbot.Utils().cprint("red", "LOOP_ERROR@auto_nsfw! {}".format(pingbot.errors.get_traceback()))
 
             await asyncio.sleep(200)
 

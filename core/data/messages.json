@@ -50,6 +50,10 @@
 	"twitch_no_alerts_pm": "You have not set any notifications yet.",
 	"twitch_no_alerts": "No notifications have been set in this channel yet.",
 	"twitch_list_streams": "**I am currently outputting notifications for these channels:** {}",
+	"config_no_subcommand": "You must provide a subcommand.",
+	"config_cannot_show": "I can not show that setting.",
+	"config_not_found": "I could not find a setting under that name.",
+	"set_welcome_message_success": "Successfully set the welcome message to this current channel.",
 	"events": {
 		"server_update": "Server has been modified!\nThe following has been changed: {}\n{}",
 		"channel_create": "Channel {} has been created!\n{}",

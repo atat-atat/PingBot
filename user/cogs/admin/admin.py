@@ -505,5 +505,45 @@ class Admin:
 		"""
 		await text("This feature is still being worked on.", emoji="failure")
 
+	@commands.command(name="set-welcome", aliases=["set_welcome"], pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_channels=True)
+	async def set_welcome_msg(self, ctx, *, message : str=None):
+		"""
+		⚔ Sets the welcome message to the current text channel.
+
+		--------------------
+		  USAGE: set-welcome <optional: message>
+		EXAMPLE: set-welcome
+		--------------------
+		"""
+		msg = ctx.message
+		server_json = pingbot.Config("./user/config/server.json").load_json()
+		if message == None:
+			message = "Welcome, {0} to the server!"
+
+		if 'welcome_message' not in server_json[msg.server.id]:
+			server_json[msg.server.id]['welcome_message'] = {}
+			server_json[msg.server.id]['welcome_message'][msg.channel.id] = message
+		else:
+			server_json[msg.server.id]['welcome_message'][msg.channel.id] = message
+
+		pingbot.Config("./user/config/server.json").write_json(server_json)
+
+		await text(pingbot.get_message("set_welcome_message_success"), emoji="success")
+
+	async def admin_member_join(self, member):
+		"""
+		on_member_join listener.
+		"""
+		server_json = pingbot.Config("./user/config/server.json").load_json()
+		if member.server.id in server_json:
+			if 'welcome_message' in server_json[member.server.id]:
+				for channel in member.server.channels:
+					if channel.id in server_json[member.server.id]['welcome_message']:
+						welcome_msg = server_json[member.server.id]['welcome_message'][channel.id]
+						await self.bot.send_message(member.server.get_channel(channel.id), welcome_msg.format(member))
+						return
+						
 def setup(bot):
+	bot.add_listener(Admin(bot).admin_member_join, 'on_member_join')
 	bot.add_cog(Admin(bot))

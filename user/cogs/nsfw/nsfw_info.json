@@ -1,16 +1,22 @@
 {
-	"nsfw_types": {}, 
-	"servers": {
-	}, 
-	"name": "NSFW Commands", 
-	"author": "atat", 
 	"messages": {
 		"no_nsfw_in_chan": "NSFW commands are not allowed in this channel.", 
 		"unknown_type": "That type is not included in the NSFW types list (I will continue with this process.)", 
+		"e621_returned_none": "Query, `{}` yielded no results!", 
 		"subtexts": ["You're welcome", "Have fun", "Here you go"]
 	}, 
+	"servers": {
+		}
+	}, 
+	"save_files": false, 
+	"author": "atat", 
 	"description": "A cog full of NSFW commands.", 
-	"version": "0.9", 
+	"version": "1.3",
+	"name": "NSFW Commands", 
 	"nsfw_directory": "./user/cogs/nsfw/collection", 
-	"save_files": false
+	"nsfw_types": {
+		"hentai": ["hentai", "hentaibondage", "hentai_gif", "hqhentai", "hentaisource", "paizuri", "futanari", "touhou_nsfw", "monstergirl", "animebooty", "tentai"], 
+		"default-girls": ["gonewild", "porn_gifs", "hentai", "hentaibondage", "HENTAI_GIF", "HQHentai", "HentaiSource", "Paizuri", "Futanari", "Touhou_NSFW", "MonsterGirl", "AnimeBooty", "tentai", "nsfw_gif", "RealGirls", "ginger", "asstastic", "LipsThatGrip", "AsiansGoneWild", "Unashamed", "ChristianGirls", "girlswithglasses", "DarkAngels", "gonewildcolor", "japaneseporn", "jilling", "tentai", "gamersgonewild", "rule34"], 
+		"default": ["gonewild", "porn_gifs", "hentai", "hentaibondage", "HENTAI_GIF", "HQHentai", "HentaiSource", "Paizuri", "Futanari", "Touhou_NSFW", "MonsterGirl", "AnimeBooty", "tentai", "nsfw_gif", "RealGirls", "ginger", "asstastic", "LipsThatGrip", "AsiansGoneWild", "Unashamed", "ladybonersgw", "mangonewild", "ChristianGirls", "girlswithglasses", "DarkAngels", "gonewildcolor", "japaneseporn", "jilling", "tentai", "gamersgonewild", "gayporn", "LGBTGoneWild", "publicboys", "rule34"]
+	}
 }

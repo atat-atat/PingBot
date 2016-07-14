@@ -26,23 +26,23 @@ def get_error(error):
 	"""
 	return Utils().get_config_message(error)
 
-def get_message(message, event=False):
+def get_message(message, event=False, **kwargs):
 	"""
 	Short version of Utils().get_config_message
 	"""
 	if event == True:
-	 	return Utils().get_config_event_message(message)
+	 	return Utils().get_config_event_message(message, **kwargs)
 	else:
-	 	return Utils().get_config_message(message)
+	 	return Utils().get_config_message(message, **kwargs)
 
-def get_event_message(message):
+def get_event_message(message, **kwargs):
 	"""
 	Short version of Utils().get_config_event_message
 	"""
-	return Utils().get_config_event_message(message)
+	return Utils().get_config_event_message(message, **kwargs)
 
-def get_event_msg(message):
+def get_event_msg(message, **kwargs):
 	"""
 	Short version of Utils().get_config_event_message
 	"""
-	return Utils().get_config_event_message(message)
+	return Utils().get_config_event_message(message, **kwargs)

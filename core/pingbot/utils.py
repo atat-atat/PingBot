@@ -561,10 +561,10 @@ Default Channel: {0.default_channel}
 		changed_items = []
 		if before.name != after.name:
 			changed_items.append("name")
-		if before.topic != after.topic:
+		elif before.topic != after.topic:
 			changed_items.append("topic")
-		if before.position != after.position:
-			changed_items.append("totem pole position")
+		#if before.position != after.position:
+		#	changed_items.append("totem pole position")
 		return changed_items
 
 	def return_what_updated_server(self, before, after):
@@ -606,8 +606,9 @@ Default Channel: {0.default_channel}
 		fmt = "{}:{}:{}".format(hr, minu, sec)
 		return fmt
 
-	def get_config_message(self, message):
-		messages = pingbot.Config('./core/data/messages.json').load_json()
+	def get_config_message(self, message, **kwargs):
+		directory = kwargs.get('direc', './core/data/messages.json')
+		messages = pingbot.Config(directory).load_json()
 
 		if message not in messages:
 			raise KeyError("Could not find the message, {}.".format(message))
@@ -617,8 +618,9 @@ Default Channel: {0.default_channel}
 
 		return messages[message]
 
-	def get_config_event_message(self, message):
-		messages = pingbot.Config('./core/data/messages.json').load_json()
+	def get_config_event_message(self, message, **kwargs):
+		directory = kwargs.get('direc', './core/data/messages.json')
+		messages = pingbot.Config(directory).load_json()
 
 		if message not in messages["events"]:
 			raise KeyError("Could not find the message, {}.".format(message))

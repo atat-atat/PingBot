@@ -490,6 +490,89 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 	async def uptime_get(self):
 		await text(self.bot_uptime())
 
+	@commands.group(pass_context=True)
+	@pingbot.permissions.is_bot_owner()
+	async def config(self, ctx):
+		"""
+		⭐ Config management commands.
+
+		--------------------
+		  USAGE: config <subcommand>
+		EXAMPLE: config <subcommand>
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			await text(pingbot.get_message("config_no_subcommand"), emoji="failure")
+
+	@config.command(name="show", pass_context=True)
+	async def config_show(self, ctx, setting : str):
+		"""
+		⭐ Returns the value of a config setting.
+
+		--------------------
+		  USAGE: config show <setting>
+		EXAMPLE: config show username
+		--------------------
+		"""
+		bot_json = pingbot.Config("./user/config/bot.json").load_json()
+		if setting not in bot_json:
+			await text(pingbot.get_message("config_not_found"), emoji="failure")
+			return
+
+		if setting == "password":
+			await text(pingbot.get_message("config_cannot_show"), emoji="failure")
+			return
+		elif setting == "token":
+			await text(pingbot.get_message("config_cannot_show"), emoji="failure")
+			return
+		elif setting == "imgur":
+			await text(pingbot.get_message("config_cannot_show"), emoji="failure")
+			return
+		elif setting == "osu_key":
+			await text(pingbot.get_message("config_cannot_show"), emoji="failure")
+			return
+		elif setting == "myanimelist":
+			await text(pingbot.get_message("config_cannot_show"), emoji="failure")
+			return
+
+		if isinstance(bot_json[setting], list):
+			value = ', '.join(bot_json[setting])
+		else:
+			value = bot_json[setting]
+
+		await text("The value of `{}` is: {}".format(setting, value), emoji="success")
+
+	@config.command(name="set", pass_context=True)
+	async def config_set(self, ctx, setting : str, value : str):
+		"""
+		⭐ Returns the value of a config setting.
+
+		--------------------
+		  USAGE: config show <setting>
+		EXAMPLE: config show username
+		--------------------
+		"""
+		bot_json = pingbot.Config("./user/config/bot.json").load_json()
+		if setting not in bot_json:
+			await text(pingbot.get_message("config_not_found"), emoji="failure")
+			return
+
+		if value.lower() == "true":
+			value = True
+
+		try:
+			value = int(value)
+		except ValueError:
+			value = value
+
+		if isinstance(bot_json[setting], dict):
+			await text("Cannot modify dictionary.", emoji="failure")
+			return
+
+		bot_json[setting] = value
+		pingbot.Config("./user/config/bot.json").write_json(bot_json)
+		await text("Successfully set `{}` to {}!".format(setting, value))
+
 	def bot_uptime(self):
 		now = datetime.datetime.utcnow()
 		delta = now - self.bot.uptime

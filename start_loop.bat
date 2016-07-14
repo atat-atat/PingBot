@@ -1,6 +1,6 @@
 @echo off
 :INIT
-python bot.py debug ignore_exit no_auto_nsfw
+python bot.py
 
 timeout 3
 
