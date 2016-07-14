@@ -69,7 +69,7 @@
 		"member_game_update_fun": " is now playing *{}* (launched `{}` times!)",
 		"member_nick_update": "has reset his/her nickname",
 		"member_nick_update2": "has changed his/her nickname to {}!",
-		"member_avatar_update": "has changed his/her avatar to {}!",
+		"member_avatar_update": "has changed his/her avatar to {} !",
 		"member_ban": "Member {} has been banned.",
 		"member_unban": "Member {} has been unbanned."
 	}
