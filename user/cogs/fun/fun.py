@@ -1,12 +1,12 @@
 from core import pingbot
 from core.pingbot.messages import text
 from discord.ext import commands
-import discord
-import random
-import wikipedia
 from bs4 import BeautifulSoup
-import asyncio
 from imgurpython import ImgurClient
+from PIL import Image, ImageSequence
+from core.pingbot.images2gif35 import writeGif
+import os, asyncio, random, wikipedia, discord
+from urllib.parse import quote as urlquote
 
 cb_is_installed = True
 try:
@@ -31,6 +31,7 @@ class Fun:
 		self.game_data = {}
 
 	@commands.command(name="mentions", pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _check_mentions(self, ctx, amount : int=1000):
 		"""
 		🎭 Checks for any messages that may have mentioned you.
@@ -73,6 +74,7 @@ class Fun:
 		await text("You have been mentioned {} (the messages have been sent to you via private message.)".format(amount_of_times), emoji=emoji["success"])
 
 	@commands.group(name="notes", aliases=["note"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def notes(self, ctx):
 		"""
 		🎭 Views a note.
@@ -299,6 +301,7 @@ class Fun:
 		await text("Successfully modified note.", emoji=pingbot.get_emoji("success"))
 
 	@commands.command(name="profile", pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def profile_view(self, ctx, member: discord.Member=None):
 		"""
 		🎭 Views a profile.
@@ -340,6 +343,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(fmt)
 
 	@commands.command(name="respects", pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def respects_view(self, ctx, member: discord.Member=None):
 		"""
 		🎭 Views total respects.
@@ -358,6 +362,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text("**{} has paid {} respects out of total {} server respects.**".format(member.name, member_respects, total_respects))
 
 	@commands.command(name="top_games", aliases=["top-games"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_games_list(self, ctx):
 		"""
 		🎭 Returns a list of the most played games.
@@ -396,6 +401,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(fmt)
 
 	@commands.command(name="top_members", aliases=["top-members", "top_users", "top-users", "top_talkers", "top-talkers"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_talkers_list(self, ctx):
 		"""
 		🎭 Returns a list of the most talkative users.
@@ -431,6 +437,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(fmt)
 
 	@commands.command(name="top-commands", aliases=["top_commands"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_commands_used(self, ctx):
 		"""
 		🎭 Returns a list of the most used commands.
@@ -464,6 +471,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(fmt)
 
 	@commands.command(name="top_notes", aliases=["top-notes"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_notes_used(self, ctx):
 		"""
 		🎭 Returns a list of the most used notes.
@@ -498,6 +506,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(fmt)
 
 	@commands.command(name="movie", aliases=["show", "tv_show", "tv-show", "film"])
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def movie_info(self, *, title : str):
 		"""
 		🎭 Returns information about a movie or TV show.
@@ -522,6 +531,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(fmt, no_bold=True, emoji=pingbot.get_emoji("movie"))
 
 	@commands.command(name="wikipedia", aliases=["wiki"])
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def wikipedia_search(self, *, query : str):
 		"""
 		🎭 Returns information from wikipedia based on a topic.
@@ -540,6 +550,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text("**{}:** {}\n{}".format(_topic.title, topic, _topic.url), no_bold=True, emoji=pingbot.get_emoji("wikipedia"))
 
 	@commands.command(pass_context=True, name="youtube")
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _youtube(self, ctx, *, query : str):
 		"""
 		🎭 Searches for a video from YouTube based on a keyword.
@@ -559,6 +570,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		await text(video)
 
 	@commands.command(pass_context=True, name="urban")
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _urban(self, ctx, *, query : str):
 		"""
 		🎭 Gets the Urban Dictionary definition of a word.
@@ -591,6 +603,7 @@ Contributed  {}
 		#await pingbot.Utils(self.bot, ctx.message).text(fmt)
 
 	@commands.command(pass_context=True, name="anime")
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _mal_anime(self, ctx, *, query : str):
 		"""
 		🎭 Searches for an anime from MyAnimeList.net based on a keyword.
@@ -642,6 +655,7 @@ Contributed  {}
 		await pingbot.Utils(self.bot, ctx.message).text(fmt, emoji=pingbot.get_emoji("anime"), no_bold=True)
 
 	@commands.command(name="osu", pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _osu_user(self, ctx, username : str):
 		"""
 		🎭 Returns information about an osu! user.
@@ -675,6 +689,7 @@ Contributed  {}
 		await pingbot.Utils(self.bot, ctx.message).text(fmt, emoji=":red_circle:", no_bold=True)
 
 	@commands.command(name="gif", aliases=["giphy"])
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def giphy_search(self, *, query: str):
 		"""
 		🎭 Returns a gif image from giphy based on a keyword.
@@ -691,6 +706,7 @@ Contributed  {}
 		await text(gif.direct_embed_url, emoji=pingbot.get_emoji("success"), no_bold=True)
 
 	@commands.group(name="cc", aliases=["cmd"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def customcom(self, ctx):
 		"""
 		🎭 Custom command management commands.
@@ -881,6 +897,7 @@ Contributed  {}
 		await text("**{} commands found:** {}".format(len(commands), ", ".join(commands)), no_bold=True, emoji=pingbot.get_emoji("success"))
 
 	@commands.group(name="imgur", pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def imgur(self, ctx, *, keyword : str):
 		"""
 		🎭 Returns a result from imgur based on a keyword.
@@ -920,6 +937,7 @@ Contributed  {}
 		await text("{}\n{}\n{}".format(result1, result2, result3), emoji=pingbot.get_emoji("park"), no_bold=True)
 
 	@commands.command(name="cat")
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def random_cat(self):
 		"""
 		🎭 Returns a random image of a cat.
@@ -935,6 +953,7 @@ Contributed  {}
 		await text(cat_pic, no_bold=True, emoji=pingbot.get_emoji("cat"))
 
 	@commands.command(name="8ball")
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def eight_ball(self, question : str=None):
 		"""
 		🎭 Returns an 8ball answer.
@@ -967,6 +986,7 @@ Contributed  {}
 		await text(random.choice(eight_ball_answers), emoji=pingbot.get_emoji("8ball"))
 
 	@commands.command(name="flip", aliases=["flipcoin", "coinflip"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def coin_flip(self, ctx):
 		"""
 		🎭 Flips a coin.
@@ -983,6 +1003,7 @@ Contributed  {}
 		await text("**{}**".format(random.choice(choices)), emoji=pingbot.get_emoji("coin_flip"))
 
 	@commands.command(name="roll", aliases=["dice"])
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def roll_dice(self, dice : str=None):
 		"""
 		🎭 Rolls a dice.
@@ -1005,7 +1026,8 @@ Contributed  {}
 		result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
 		await text(result, emoji=pingbot.get_emoji("dice"))
 
-	@commands.command(description='For when you wanna settle the score some other way')
+	@commands.command()
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def choose(self, *choices : str):
 		"""
 		🎭 Selects a choice from a set of given choices.
@@ -1016,6 +1038,81 @@ Contributed  {}
 		--------------------
 		"""
 		await text(random.choice(choices))
+
+	@commands.command()
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def makegif(self, *, images : str):
+		"""
+		🎭 Creates an animated gif from a list of image URLs (maximum frames: 50.)
+
+		--------------------
+		  USAGE: makegif <images>
+		EXAMPLE: makegif http://random.cat/i/camocat.jpg http://random.cat/i/catbaby.jpg http://random.cat/i/zKh6T.jpg
+		--------------------
+		"""
+		images_ = images.split()
+		if len(images_) >= 50:
+			await text("Too many images!", emoji="failure")
+			return
+
+		for image in images_:
+			if '.gif' in image:
+				await text("You can not include a GIF.", emoji='failure')
+				return
+
+		frame_num = 1
+		for im in images_:
+			resp = await pingbot.WT().async_url_content(im)
+			with open("./core/data/frame_{}.png".format(frame_num), 'wb') as f:
+				f.write(resp)
+			frame_num += 1
+		
+		file_names = []
+		for i in range(len(images_)):
+			file_names.append("./core/data/frame_{}.png".format(i+1))
+
+		try:
+			images = [Image.open(fn) for fn in file_names]
+		except OSError:
+			await text("Invalid image(s).", emoji="failure")
+			return
+
+		size = (600,350)
+		for im in images:
+			im.thumbnail(size, Image.ANTIALIAS)
+
+		filename = "./core/data/finished_product.gif"
+		writeGif(filename, images, duration=0.5, subRectangles=False)
+		for i in range(len(images_)):
+			os.remove("./core/data/frame_{}.png".format(i+1))
+
+		await self.bot.upload('./core/data/finished_product.gif')
+		os.remove('./core/data/finished_product.gif')
+
+	@commands.command(pass_context=True)
+	async def latex(self, ctx, *text):
+		"""
+		🎭 Converts unformated LaTeX into an image.
+
+		--------------------
+		  USAGE: latex <text/equation>
+		EXAMPLE: latex \frac {a} {b}
+		--------------------
+		"""
+		url = "http://latex.codecogs.com/png.latex?\\bg_white \\huge "
+
+		for token in list(text):
+			url += " " + urlquote(token)
+
+		url = url.replace(' ', "%20")
+
+		response = await pingbot.WT().async_url_content(url)
+
+		with open('./user/cogs/fun/latex_image.png', 'wb') as fp:
+			fp.write(response)
+
+		await self.bot.upload('./user/cogs/fun/latex_image.png')
+		os.remove('./user/cogs/fun/latex_image.png')
 
 #---------------- Events ----------------#
 
@@ -1063,7 +1160,22 @@ Contributed  {}
 					response = cb1.ask(content)
 					await self.bot.send_message(msg.channel, ":loud_sound: {}".format(response))
 				except IndexError:
-					await self.bot.send_message(msg.channel, ":thumbsdown: Unable to access cleverbot.")
+					await self.bot.send_message(msg.channel, ":thumbsdown: **Unable to access cleverbot.**")
+
+		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
+		if msg.author != self.bot.user and not msg.author.bot:
+			if msg.content in auto_replies["auto_replies"]:
+				await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.content])
+			else:
+				for reply in auto_replies["auto_replies"]:
+					if reply.startswith(":"):
+						msg_content = msg.content.split()
+						#reply_instig = auto_replies
+						#reply = auto_replies["auto_replies"][reply]
+						_reply = reply[len(":"):]
+						if _reply in msg_content:
+							await self.bot.send_message(msg.channel, auto_replies["auto_replies"][reply])
+							return
 
 	async def fun_member_update(self, before, after):
 		"""
@@ -1148,6 +1260,7 @@ Contributed  {}
 		self.write_stats(stats_json)
 
 #---------------- Utilities ----------------#
+
 	async def is_disabled(self, ctx, *args):
 		if pingbot.Utils().cmd_is_disabled_list_form(ctx, list(args)):
 			await pingbot.Utils(self.bot, ctx.message).text(cmd_disabled, emoji=emoji["failure"])
