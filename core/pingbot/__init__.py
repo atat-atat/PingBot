@@ -5,7 +5,6 @@ PingBot Utilities Module.
 from .utils import Utils
 from .config import Config
 from .errors import *
-from .log import Log
 from .webtools import WT
 from .permissions import *
 from .osu import *
