@@ -106,6 +106,7 @@ Currently connected to {5} {6} ({7} players!)
 	await nsfw_check()
 	await feed_check()
 	await stream_check()
+	await git_check()
 
 @client.event
 async def on_message(msg):
@@ -403,6 +404,12 @@ async def stream_check():
 	if 'user.cogs.streams.streams' in client.extensions.keys():
 		from user.cogs.streams.streams import Streams
 		loop.create_task(Streams(client).stream_check())
+
+async def git_check():
+	await client.wait_until_ready()
+	if 'user.cogs.github.github' in client.extensions.keys():
+		from user.cogs.github.github import GitHub
+		loop.create_task(GitHub(client).git_loop())
 
 if __name__ == '__main__':
 	client.client_id = settings["client_id"]
