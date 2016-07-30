@@ -71,6 +71,8 @@ async def text(string, **kwargs):
 	emoji = kwargs.get("emoji", None) #set the beginning emoji
 	no_mention = kwargs.get("no_mention", False) #set whether the bot should not mention the author
 	no_bold = kwargs.get("no_bold", False)
+	if 'http' in string:
+		no_bold = True
 	no_message_limiter = kwargs.get("no_message_limiter", False)
 
 	if isinstance(emoji, str) and emoji != None and not emoji.startswith(":"):

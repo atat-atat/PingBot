@@ -67,10 +67,13 @@ def _is_serv_owner(member, ctx):
 	"""
 	Checks if the member is the server owner.
 	"""
-	if member == ctx.message.server.owner:
-		return True
+	if not ctx.message.channel.is_private:
+		if member == ctx.message.server.owner:
+			return True
+		else:
+			return False
 	else:
-		return False
+		return True
 
 def _is_administrator(member):
 	"""
@@ -101,7 +104,14 @@ def has_permissions(**perms):
 			return True
 
 		if no_cmd_check == True:
-			if ctx.command.name in pingbot.Config('./user/config/server.json').load_json()[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] or ctx.command.name in pingbot.Config('./user/config/server.json').load_json()[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
+			server_json = pingbot.Config('./user/config/server.json').load_json()
+			if ctx.message.server.id not in server_json:
+				pass
+			elif ctx.message.channel.id not in server_json[ctx.message.server.id]["channels"]:
+				pass
+			elif member.id not in server_json[ctx.message.server.id]["members"]:
+				pass
+			elif ctx.command.name in server_json[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] or ctx.command.name in server_json[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
 				raise commands.DisabledCommand("Command '{}' is disabled!".format(ctx.command))
 			
 		channel = ctx.message.channel
@@ -123,7 +133,14 @@ def _has_permissions(ctx, **perms):
 		return True
 
 	if no_cmd_check == True:
-		if ctx.command.name in pingbot.Config('./user/config/server.json').load_json()[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] or ctx.command.name in pingbot.Config('./user/config/server.json').load_json()[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
+		server_json = pingbot.Config('./user/config/server.json').load_json()
+		if ctx.message.server.id not in server_json:
+			pass
+		elif ctx.message.channel.id not in server_json[ctx.message.server.id]["channels"]:
+			pass
+		elif member.id not in server_json[ctx.message.server.id]["members"]:
+			pass
+		elif ctx.command.name in server_json[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] or ctx.command.name in server_json[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
 			raise commands.DisabledCommand("Command '{}' is disabled!".format(ctx.command))
 			
 	channel = ctx.message.channel

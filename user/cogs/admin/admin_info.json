@@ -1,6 +1,9 @@
 {
-	"name": "Admin Cog",
-	"version": "0.5",
-	"author": "atat",
-	"description": "A cog full of tools to help keep your server well moderated."
+	"auto_roles": {}, 
+	"description": "A cog full of tools to help keep your server well moderated.", 
+	"leave_messages": {}, 
+	"name": "Admin Cog", 
+	"author": "atat", 
+	"welcome_messages": {}, 
+	"version": "0.5"
 }

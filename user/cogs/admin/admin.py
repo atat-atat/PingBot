@@ -30,7 +30,7 @@ class Admin:
 			}
 		}
 
-	@commands.command(pass_context=True, name="set-log", aliases=["set_log"])
+	@commands.command(pass_context=True, name="set-log", aliases=["set_log"], no_pm=True)
 	@pingbot.permissions.is_bot_owner()
 	@pingbot.permissions.is_serv_owner()
 	@pingbot.permissions.is_administrator()
@@ -63,7 +63,7 @@ class Admin:
 			await text("Successfully removed mod status log from the current channel!", emoji="success")
 			return
 
-	@commands.command(pass_context=True, name="set-status", aliases=["set_status"])
+	@commands.command(pass_context=True, name="set-status", aliases=["set_status"], no_pm=True)
 	@pingbot.permissions.is_bot_owner()
 	@pingbot.permissions.is_serv_owner()
 	@pingbot.permissions.is_administrator()
@@ -94,12 +94,12 @@ class Admin:
 		⚔ Disables or enables a command for a channel or member.
 
 		--------------------
-		  USAGE: toggle-command <command> <optional: member name or mention>
+		  USAGE: toggle-command <command or "all"> <optional: member name or mention>
 		EXAMPLE: toggle-command rule34
 		--------------------
 		"""
 		server_config = pingbot.Config("./user/config/server.json").load_json()
-		if command not in self.bot.commands: #if the command doesn't exist.
+		if command not in self.bot.commands and command not in pingbot.Config("./user/cogs/fun/customcommands.json").load_json() and command.lower() != "all": #if the command doesn't exist.
 			await text(pingbot.get_message("toggle_command_not_found"), emoji="failure")
 			return
 
@@ -107,37 +107,125 @@ class Admin:
 			await text(pingbot.get_message("toggle_command_cannot_be_toggled"), emoji="failure")
 			return
 
-		if member != None:
-			if member.id not in server_config[ctx.message.server.id]["members"]:
-				server_config[ctx.message.server.id]["members"][member.id] = {}
-				server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"] = []
+		if command.lower() == "all":
+			if member != None:
+				disabling = False
+				if member.id not in server_config[ctx.message.server.id]["members"]:
+					server_config[ctx.message.server.id]["members"][member.id] = {}
+					server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"] = []
 
-			if command not in server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"]: #disable command
-				server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"].append(command)
-				pingbot.Config("./user/config/server.json").write_json(server_config)
-				await text(pingbot.get_message("disabled_command_success_member").format(member), emoji="success")
-				return
-			else: #enable command
-				server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"].remove(command)
-				pingbot.Config("./user/config/server.json").write_json(server_config)
-				await text(pingbot.get_message("enabled_command_success_member").format(member), emoji="success")
-				return
-			
-		else:
-			if ctx.message.channel.id not in server_config[ctx.message.server.id]["channels"]:
-				server_config[ctx.message.server.id]["channels"][ctx.message.channel.id] = {}
-				server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] = []
+				for cmd in self.bot.commands: #disable all regular commands
+					if cmd not in server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"] and cmd not in pingbot.Config("./core/data/system.json").load_json()["no_disable"]:
+						server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"].append(cmd)
+						disabling = True
+					elif cmd in server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
+						server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"].remove(cmd)
 
-			if command not in server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"]:
-				server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"].append(command) #disable command
+				cc_json = pingbot.Config("./user/cogs/fun/customcommands.json").load_json()
+				for cc in cc_json: #disable all custom commands
+					if member.id not in cc_json[cc]["disabled"] and cc not in pingbot.Config("./core/data/system.json").load_json()["no_disable"]:
+						cc_json[cc]["disabled"].append(member.id)
+						disabling = True
+					elif member.id in cc_json[cc]["disabled"]:
+						cc_json[cc]["disabled"].remove(member.id)
+
 				pingbot.Config("./user/config/server.json").write_json(server_config)
-				await text(pingbot.get_message("disabled_command_success"), emoji="success")
+				pingbot.Config("./user/cogs/fun/customcommands.json").write_json(cc_json)
+
+				if disabling == True:
+					await text("Successfully disabled all commands, and custom commands for {}!".format(member), emoji="success")
+				else:
+					await text("Successfully enabled all commands, and custom commands for {}!".format(member), emoji="success")
 				return
 			else:
-				server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"].remove(command) #enable command
+				disabling = False
+				if ctx.message.channel.id not in server_config[ctx.message.server.id]["channels"]:
+					server_config[ctx.message.server.id]["channels"][ctx.message.channel.id] = {}
+					server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] = []
+
+				for cmd in self.bot.commands:
+					if cmd not in server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] and cmd not in pingbot.Config("./core/data/system.json").load_json()["no_disable"]:
+						disabling = True
+						server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"].append(cmd)
+					elif cmd in server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"]:
+						server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"].remove(cmd)
+
+				cc_json = pingbot.Config("./user/cogs/fun/customcommands.json").load_json()
+				for cc in cc_json: #disable all custom commands
+					if ctx.message.channel.id not in cc_json[cc]["disabled"] and cc not in pingbot.Config("./core/data/system.json").load_json()["no_disable"]:
+						cc_json[cc]["disabled"].append(ctx.message.channel.id)
+						disabling = True
+					elif ctx.message.channel.id in cc_json[cc]["disabled"]:
+						cc_json[cc]["disabled"].remove(ctx.message.channel.id)
+
 				pingbot.Config("./user/config/server.json").write_json(server_config)
-				await text(pingbot.get_message("enabled_command_success"), emoji="success")
+				pingbot.Config("./user/cogs/fun/customcommands.json").write_json(cc_json)
+
+				if disabling == True:
+					await text("Successfully disabled all commands, and custom commands for this channel!", emoji="success")
+				else:
+					await text("Successfully enabled all commands, and custom commands for this channel!", emoji="success")
+
 				return
+
+		if command in pingbot.Config("./user/cogs/fun/customcommands.json").load_json() and command not in self.bot.commands:
+			if member != None:
+				cc_json = pingbot.Config("./user/cogs/fun/customcommands.json").load_json()
+				if member.id not in cc_json[command]["disabled"]:
+					cc_json[command]["disabled"].append(member.id)
+					pingbot.Config("./user/cogs/fun/customcommands.json").write_json(cc_json)
+					await text("Successfully disabled custom command for {}".format(member), emoji="success")
+					return
+				else:
+					cc_json[command]["disabled"].remove(member.id)
+					pingbot.Config("./user/cogs/fun/customcommands.json").write_json(cc_json)
+					await text("Successfully enabled custom command for {}".format(member), emoji="success")
+					return
+			else:
+				cc_json = pingbot.Config("./user/cogs/fun/customcommands.json").load_json()
+
+				if ctx.message.channel.id not in cc_json[command]["disabled"]:
+					cc_json[command]["disabled"].append(ctx.message.channel.id)
+					pingbot.Config("./user/cogs/fun/customcommands.json").write_json(cc_json)
+					await text("Successfully disabled custom command for this channel.", emoji="success")
+					return
+				else:
+					cc_json[command]["disabled"].remove(ctx.message.channel.id)
+					pingbot.Config("./user/cogs/fun/customcommands.json").write_json(cc_json)
+					await text("Successfully enabled custom command for this channel.", emoji="success")
+					return
+		else:
+			if member != None:
+				if member.id not in server_config[ctx.message.server.id]["members"]:
+					server_config[ctx.message.server.id]["members"][member.id] = {}
+					server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"] = []
+
+				if command not in server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"]: #disable command
+					server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"].append(command)
+					pingbot.Config("./user/config/server.json").write_json(server_config)
+					await text(pingbot.get_message("disabled_command_success_member").format(member), emoji="success")
+					return
+				else: #enable command
+					server_config[ctx.message.server.id]["members"][member.id]["disabled_commands"].remove(command)
+					pingbot.Config("./user/config/server.json").write_json(server_config)
+					await text(pingbot.get_message("enabled_command_success_member").format(member), emoji="success")
+					return
+				
+			else:
+				if ctx.message.channel.id not in server_config[ctx.message.server.id]["channels"]:
+					server_config[ctx.message.server.id]["channels"][ctx.message.channel.id] = {}
+					server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] = []
+
+				if command not in server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"]:
+					server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"].append(command) #disable command
+					pingbot.Config("./user/config/server.json").write_json(server_config)
+					await text(pingbot.get_message("disabled_command_success"), emoji="success")
+					return
+				else:
+					server_config[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"].remove(command) #enable command
+					pingbot.Config("./user/config/server.json").write_json(server_config)
+					await text(pingbot.get_message("enabled_command_success"), emoji="success")
+					return
 
 	@commands.command(pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(ban_members=True)
@@ -272,7 +360,7 @@ class Admin:
 			await text(no_bot_perm, emoji="failure")
 
 	@commands.command(pass_context=True, name="member", no_pm=True)
-	@pingbot.permissions.has_permissions()
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _get_member_info(self, ctx, member : discord.Member=None):
 		"""
 		⚔ Returns information about a member.
@@ -288,6 +376,7 @@ class Admin:
 		await text(pingbot.Utils().return_member_info(member))
 
 	@commands.command(pass_context=True, name="avatar", no_pm=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _get_member_avatar(self, ctx, member : discord.Member=None):
 		"""
 		⚔ Returns the avatar URL of a member.
@@ -308,6 +397,7 @@ class Admin:
 		await text(avatar, emoji="member_update_avatar", no_bold=True)
 
 	@commands.command(pass_context=True, name="channel", no_pm=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _get_channel_info(self, ctx, channel : discord.Channel=None):
 		"""
 		⚔ Returns information about a channel.
@@ -327,6 +417,7 @@ class Admin:
 		await text(pingbot.Utils().return_channel_info(channel))
 
 	@commands.command(pass_context=True, name="server", no_pm=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _get_server_info(self, ctx):
 		"""
 		⚔ Returns information about the server.
@@ -339,6 +430,7 @@ class Admin:
 		await text(pingbot.Utils().return_server_info(ctx.message.server))
 
 	@commands.group(pass_context=True, name="iam")
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def _iam_role(self, ctx):
 		"""
 		⚔ Adds you to a role (or sets the bot owner to the author.)
@@ -493,6 +585,478 @@ class Admin:
 			await text(pingbot.get_message("iam_role_botowner_verification_denied"), emoji="failure")
 			return
 
+	@commands.group(pass_context=True, aliases=["auto_reply", "auto-reply", "autoreplies", "auto-replies", "auto_replies", "autoreplys", "auto-replys", "auto_replys"], no_pm=True)
+	@pingbot.permissions.has_permissions(manage_messages=True)
+	async def autoreply(self, ctx):
+		"""
+		⚔ Auto reply management command.
+
+		--------------------
+		  USAGE: autoreply <subcommand or auto reply keyword>
+		EXAMPLE: autoreply add
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			if ctx.subcommand_passed is None:
+				await text("You must provide a subcommand or auto reply keyword.", emoji="failure")
+				return
+
+			auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()["auto_replies"]
+			if ctx.message.server.id not in auto_replies:
+				await text("No auto replies have been added to this server.", emoji="failure")
+				return
+
+			ar_keyword = ctx.subcommand_passed
+			if ar_keyword not in auto_replies[ctx.message.server.id]:
+				await text("That keyword doesn't exist!", emoji="failure")
+				return
+
+			await text("The value of `{}` is, `{}`.".format(ar_keyword, auto_replies[ctx.message.server.id][ar_keyword]))
+
+	@autoreply.command(pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_messages=True)
+	async def add(self, ctx, keyword : str, *, value : str):
+		"""
+		⚔ Adds an auto reply keyword.
+
+		--------------------
+		  USAGE: autoreply add <keyword> <value>
+		EXAMPLE: autoreply add ayy lmao
+		--------------------
+		"""
+		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
+		if ctx.message.server.id not in auto_replies["auto_replies"]:
+			auto_replies["auto_replies"][ctx.message.server.id] = {}
+			auto_replies["auto_replies"][ctx.message.server.id][keyword] = value
+			pingbot.Config('./user/cogs/fun/fun_info.json').write_json(auto_replies)
+			await text("Successfully added auto reply keyword!", emoji="success")
+			return
+
+		elif keyword not in auto_replies["auto_replies"][ctx.message.server.id]:
+			auto_replies["auto_replies"][ctx.message.server.id][keyword] = value
+			pingbot.Config('./user/cogs/fun/fun_info.json').write_json(auto_replies)
+			await text("Successfully added auto reply keyword!", emoji="success")
+			return
+		else:
+			await text("That keyword has already been added.", emoji="failure")
+			return
+
+	@autoreply.command(pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_messages=True)
+	async def rename(self, ctx, keyword : str, new_keyword : str):
+		"""
+		⚔ Renames an auto reply keyword.
+
+		--------------------
+		  USAGE: autoreply rename <keyword> <new_keyword>
+		EXAMPLE: autoreply rename ayy ayy_lmao
+		--------------------
+		"""
+		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
+		if ctx.message.server.id not in auto_replies["auto_replies"]:
+			await text("No keywords have been added on this server.", emoji="failure")
+			return
+		elif keyword not in auto_replies["auto_replies"][ctx.message.server.id]:
+			await text("That keyword has not been added on this server.", emoji="failure")
+		else:
+			old_keyword_data = auto_replies["auto_replies"][ctx.message.server.id][keyword]
+			auto_replies["auto_replies"][ctx.message.server.id].pop(keyword)
+			auto_replies["auto_replies"][ctx.message.server.id][new_keyword] = old_keyword_data
+			pingbot.Config('./user/cogs/fun/fun_info.json').write_json(auto_replies)
+			await text("Successfully renamed keyword!", emoji="success")
+			return
+
+	@autoreply.command(pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_messages=True)
+	async def edit(self, ctx, keyword : str, new_value : str):
+		"""
+		⚔ Modifies an auto reply keyword value.
+
+		--------------------
+		  USAGE: autoreply edit <keyword> <new value>
+		EXAMPLE: autoreply edit ayy lmao1
+		--------------------
+		"""
+		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
+		if ctx.message.server.id not in auto_replies["auto_replies"]:
+			await text("No keywords have been added on this server.", emoji="failure")
+			return
+		elif keyword not in auto_replies["auto_replies"][ctx.message.server.id]:
+			await text("That keyword has not been added on this server.", emoji="failure")
+		else:
+			auto_replies["auto_replies"][ctx.message.server.id][keyword] = new_value
+			pingbot.Config('./user/cogs/fun/fun_info.json').write_json(auto_replies)
+			await text("Successfully modified keyword!", emoji="success")
+			return
+
+	@autoreply.command(pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_messages=True)
+	async def remove(self, ctx, keyword : str):
+		"""
+		⚔ Removes an auto reply keyword.
+
+		--------------------
+		  USAGE: autoreply remove <keyword>
+		EXAMPLE: autoreply remove ayy
+		--------------------
+		"""
+		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
+		if ctx.message.server.id not in auto_replies["auto_replies"]:
+			await text("No keywords have been added on this server.", emoji="failure")
+			return
+		elif keyword not in auto_replies["auto_replies"][ctx.message.server.id]:
+			await text("That keyword has not been added on this server.", emoji="failure")
+		else:
+			auto_replies["auto_replies"][ctx.message.server.id].pop(keyword)
+			pingbot.Config('./user/cogs/fun/fun_info.json').write_json(auto_replies)
+			await text("Successfully removed keyword!", emoji="success")
+			return
+
+	@commands.group(pass_context=True, aliases=["welcome_msg", "welcome-msg"], no_pm=True)
+	@pingbot.permissions.has_permissions(manage_channels=True)
+	async def welcomemsg(self, ctx):
+		"""
+		⚔ Welcome message management command.
+
+		--------------------
+		  USAGE: welcomemsg <subcommand>
+		EXAMPLE: welcomemsg add
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			await text("You must provide a subcommand.")
+
+	@welcomemsg.command(name="add", pass_context=True, no_pm=True)
+	async def welcomemsg_add(self, ctx, channel : discord.Channel, *, welcome_message : str):
+		"""
+		⚔ Adds a welcome message to a channel.
+
+		--------------------
+		  USAGE: welcomemsg add <channel> <welcome message>
+		EXAMPLE: welcomemsg add #general Welcome to {0.server.name}!
+		--------------------
+		"""
+		welcome_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if channel.id not in welcome_json["welcome_messages"]:
+			welcome_json["welcome_messages"][channel.id] = []
+			welcome_json["welcome_messages"][channel.id].append(welcome_message)
+		elif welcome_message not in welcome_json["welcome_messages"][channel.id]:
+			welcome_json["welcome_messages"][channel.id].append(welcome_message)
+		else:
+			await text("That message has already been added.", emoji="failure")
+			return
+
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(welcome_json)
+
+		await text("Successfully added welcome message.", emoji="success")
+
+	@welcomemsg.command(name="remove", pass_context=True, no_pm=True)
+	async def welcomemsg_remove(self, ctx, *, welcome_message : str):
+		"""
+		⚔ Remove a welcome message.
+
+		--------------------
+		  USAGE: welcomemsg remove <exact string or index>
+		EXAMPLE: welcomemsg remove 0
+		--------------------
+		"""
+		welcome_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.channel.id not in welcome_json["welcome_messages"]:
+			await text("No welcome messages have been added to this channel.", emoji="failure")
+			return
+		elif welcome_message not in welcome_json["welcome_messages"][ctx.message.channel.id]:
+			await text("That welcome message has not been added to this channel.", emoji="failure")
+			return
+		elif any(char in welcome_message for char in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '/', '\\', '`', '[', ';', '.', ',', ']', '-', '=', '_', '+', '~', '{', '}', ':', "'", '"', '<', '>', '?', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')']):
+			try:
+				welcome_index = int(welcome_message)
+			except ValueError:
+				await text("That welcome message has not been added to this channel.", emoji="failure")
+				return
+
+			try:
+				welcome_message = welcome_json["welcome_messages"][ctx.message.channel.id][welcome_index]
+			except IndexError:
+				await text("Index is out of range.", emoji="failure")
+				return
+
+			welcome_json["welcome_messages"][ctx.message.channel.id].pop(welcome_index)
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(welcome_json)
+		await text("Successfully removed message.", emoji="success")
+
+	@welcomemsg.command(name="disable", pass_context=True, no_pm=True)
+	async def welcomemsg_disable(self, ctx):
+		"""
+		⚔ Removes/disables all welcome messages.
+
+		--------------------
+		  USAGE: welcomemsg disable
+		EXAMPLE: welcomemsg disable
+		--------------------
+		"""
+		welcome_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.channel.id not in welcome_json["welcome_messages"]:
+			await text("No welcome messages have been added to this channel.", emoji="failure")
+			return
+		welcome_json["welcome_messages"].pop(ctx.message.channel.id)
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(welcome_json)
+		await text("Successfully removed all welcome messages from this channel.", emoji="success")
+
+	@welcomemsg.command(name="all", aliases=["view"], pass_context=True, no_pm=True)
+	async def welcomemsg_view_all(self, ctx):
+		"""
+		⚔ Views all welcome messages added to the current channel as well as their index.
+
+		--------------------
+		  USAGE: welcomemsg all
+		EXAMPLE: welcomemsg all
+		--------------------
+		"""
+		welcome_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.channel.id not in welcome_json["welcome_messages"]:
+			await text("No welcome messages have been added to this server.", emoji="success")
+			return
+
+		msgs = []
+		for msg in welcome_json["welcome_messages"][ctx.message.channel.id]:
+			msgs.append("(`{}`) {}".format(welcome_json["welcome_messages"][ctx.message.channel.id].index(msg), msg))
+
+		fmt = "There are {} welcome messages set in this channel: {}".format(len(msgs), ', '.join(msgs))
+		if len(fmt) >= 2000:
+			await text("There are {} welcome messages set in this channel. Since the length of the message(s) exceed the message word count (2000), I will not output the messages.".format(len(msgs)))
+			return
+
+		await text(fmt)
+
+	@commands.group(pass_context=True, aliases=["leave_msg", "leave-msg"], no_pm=True)
+	@pingbot.permissions.has_permissions(manage_channels=True)
+	async def leavemsg(self, ctx):
+		"""
+		⚔ Leave message management command.
+
+		--------------------
+		  USAGE: leavemsg <subcommand>
+		EXAMPLE: leavemsg add
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			await text("You must provide a subcommand.", emoji="failure")
+
+	@leavemsg.command(name="add", pass_context=True, no_pm=True)
+	async def leavemsg_add(self, ctx, channel : discord.Channel, *, leave_message : str):
+		"""
+		⚔ Adds a leave message to a channel.
+
+		--------------------
+		  USAGE: leavemsg add <channel> <leave message>
+		EXAMPLE: leavemsg add #general {0} has left the server!
+		--------------------
+		"""
+		leave_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if channel.id not in leave_json["leave_messages"]:
+			leave_json["leave_messages"][channel.id] = []
+			leave_json["leave_messages"][channel.id].append(leave_message)
+		elif leave_message not in leave_json["leave_messages"][channel.id]:
+			leave_json["leave_messages"][channel.id].append(leave_message)
+		else:
+			await text("That message has already been added.", emoji="failure")
+			return
+
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(leave_json)
+
+		await text("Successfully added leave message.", emoji="success")
+
+	@leavemsg.command(name="remove", pass_context=True, no_pm=True)
+	async def leavemsg_remove(self, ctx, *, leave_message : str):
+		"""
+		⚔ Remove a leave message.
+
+		--------------------
+		  USAGE: leavemsg remove <exact string or index>
+		EXAMPLE: leavemsg remove 0
+		--------------------
+		"""
+		leave_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.channel.id not in leave_json["leave_messages"]:
+			await text("No leave messages have been added to this channel.", emoji="failure")
+			return
+		elif leave_message not in leave_json["leave_messages"][ctx.message.channel.id]:
+			await text("That leave message has not been added to this channel.", emoji="failure")
+			return
+		elif any(char in leave_message for char in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '/', '\\', '`', '[', ';', '.', ',', ']', '-', '=', '_', '+', '~', '{', '}', ':', "'", '"', '<', '>', '?', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')']):
+			try:
+				leave_index = int(leave_message)
+			except ValueError:
+				await text("That leave message has not been added to this channel.", emoji="failure")
+				return
+
+			try:
+				leave_message = leave_json["leave_messages"][ctx.message.channel.id][leave_index]
+			except IndexError:
+				await text("Index is out of range.", emoji="failure")
+				return
+
+			leave_json["leave_messages"][ctx.message.channel.id].pop(leave_index)
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(leave_json)
+		await text("Successfully removed message.", emoji="success")
+
+	@leavemsg.command(name="disable", pass_context=True, no_pm=True)
+	async def leavemsg_disable(self, ctx):
+		"""
+		⚔ Removes/disables all leave messages.
+
+		--------------------
+		  USAGE: leavemsg disable
+		EXAMPLE: leavemsg disable
+		--------------------
+		"""
+		leave_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.channel.id not in leave_json["leave_messages"]:
+			await text("No welcome messages have been added to this channel.", emoji="failure")
+			return
+		leave_json["leave_messages"].pop(ctx.message.channel.id)
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(leave_json)
+		await text("Successfully removed all leave messages from this channel.", emoji="success")
+
+	@leavemsg.command(name="all", aliases=["view"], pass_context=True, no_pm=True)
+	async def leavemsg_view_all(self, ctx):
+		"""
+		⚔ Views all leave messages added to the current channel as well as their index.
+
+		--------------------
+		  USAGE: leavemsg all
+		EXAMPLE: leavemsg all
+		--------------------
+		"""
+		leave_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.channel.id not in leave_json["leave_messages"]:
+			await text("No leave messages have been added to this server.", emoji="success")
+			return
+
+		msgs = []
+		for msg in leave_json["leave_messages"][ctx.message.channel.id]:
+			msgs.append("(`{}`) {}".format(leave_json["leave_messages"][ctx.message.channel.id].index(msg), msg))
+
+		fmt = "There are {} leave messages set in this channel: {}".format(len(msgs), ', '.join(msgs))
+		if len(fmt) >= 2000:
+			await text("There are {} leave messages set in this channel. Since the length of the message(s) exceed the message word count (2000), I will not output the messages.".format(len(msgs)))
+			return
+
+		await text(fmt)
+
+	@commands.group(pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_roles=True)
+	async def autorole(self, ctx):
+		"""
+		⚔ Automatic role assigner management command.
+
+		--------------------
+		  USAGE: autorole <subcommand>
+		EXAMPLE: autorole add
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			await text("You must provide a subcommand.")
+
+	@autorole.command(name="add", pass_context=True, no_pm=True)
+	async def autorole_add(self, ctx, *, role_name : str):
+		"""
+		⚔ Add a role to the list of auto-roles.
+
+		--------------------
+		  USAGE: autorole add <role name or ID>
+		EXAMPLE: autorole add Member
+		--------------------
+		"""
+		autorole_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.server.id not in autorole_json["auto_roles"]:
+			autorole_json["auto_roles"][ctx.message.server.id] = []
+			autorole_json["auto_roles"][ctx.message.server.id].append(role_name)
+		elif role_name not in autorole_json["auto_roles"][ctx.message.server.id]:
+			autorole_json["auto_roles"][ctx.message.server.id].append(role_name)
+
+		else:
+			await text("That role has already been added.", emoji="failure")
+			return
+
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(autorole_json)
+		await text("Successfully added role!", emoji="success")
+
+	@autorole.command(name="remove", aliases=["rem", "rm"], pass_context=True, no_pm=True)
+	async def autorole_remove(self, ctx, *, role_name : str):
+		"""
+		⚔ Add a role to the list of auto-roles.
+
+		--------------------
+		  USAGE: autorole add <role name or ID>
+		EXAMPLE: autorole add Member
+		--------------------
+		"""
+		autorole_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.server.id not in autorole_json["auto_roles"]:
+			await text("No roles have been added on this server.", emoji="failure")
+			return
+		elif role_name not in autorole_json["auto_roles"][ctx.message.server.id]:
+			await text("That role doesn't exist.", emoji="failure")
+			return
+		elif any(char in role_name for char in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '/', '\\', '`', '[', ';', '.', ',', ']', '-', '=', '_', '+', '~', '{', '}', ':', "'", '"', '<', '>', '?', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')']):
+			try:
+				role_index = int(role_name)
+			except ValueError:
+				await text("That role doesn't exist..", emoji="failure")
+				return
+
+			try:
+				role = autorole_json["auto_roles"][ctx.message.server.id][role_index]
+			except IndexError:
+				await text("Index is out of range.", emoji="failure")
+				return
+
+			autorole_json["auto_roles"][ctx.message.server.id].pop(role_index)
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(autorole_json)
+		await text("Successfully removed role.", emoji="success")
+
+	@autorole.command(name="disable", pass_context=True, no_pm=True)
+	async def autorole_disable(self, ctx):
+		"""
+		⚔ Removes/disables all automatic roles.
+
+		--------------------
+		  USAGE: autorole disable
+		EXAMPLE: autorole disable
+		--------------------
+		"""
+		autorole_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.server.id not in autorole_json["auto_roles"]:
+			await text("No roles have been added to this server.", emoji="failure")
+			return
+		autorole_json["auto_roles"].pop(ctx.message.server.id)
+		pingbot.Config('./user/cogs/admin/admin_info.json').write_json(autorole_json)
+		await text("Successfully removed all roles from this server.", emoji="success")
+
+	@autorole.command(name="all", aliases=["view"], pass_context=True, no_pm=True)
+	async def autorole_view_all(self, ctx):
+		"""
+		⚔ Views all auto-roles that have been added.
+
+		--------------------
+		  USAGE: autorole all
+		EXAMPLE: autorole all
+		--------------------
+		"""
+		autorole_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		if ctx.message.server.id not in autorole_json["auto_roles"]:
+			await text("No roles have been added to this server.", emoji="failure")
+			return
+
+		msgs = []
+		for msg in autorole_json["auto_roles"][ctx.message.server.id]:
+			msgs.append("(`{}`) {}".format(autorole_json["auto_roles"][ctx.message.server.id].index(msg), msg))
+
+		fmt = "There are {} added auto-roles: {}".format(len(msgs), ', '.join(msgs))
+
+		await text(fmt)
+
 	@commands.command(name="votekick", pass_context=True, no_pm=True)
 	async def _votekick_start(self, ctx, member : discord.Member, reason : str=None):
 		"""
@@ -504,46 +1068,45 @@ class Admin:
 		--------------------
 		"""
 		await text("This feature is still being worked on.", emoji="failure")
-
-	@commands.command(name="set-welcome", aliases=["set_welcome"], pass_context=True, no_pm=True)
-	@pingbot.permissions.has_permissions(manage_channels=True)
-	async def set_welcome_msg(self, ctx, *, message : str=None):
-		"""
-		⚔ Sets the welcome message to the current text channel.
-
-		--------------------
-		  USAGE: set-welcome <optional: message>
-		EXAMPLE: set-welcome
-		--------------------
-		"""
-		msg = ctx.message
-		server_json = pingbot.Config("./user/config/server.json").load_json()
-		if message == None:
-			message = "Welcome, {0} to the server!"
-
-		if 'welcome_message' not in server_json[msg.server.id]:
-			server_json[msg.server.id]['welcome_message'] = {}
-			server_json[msg.server.id]['welcome_message'][msg.channel.id] = message
-		else:
-			server_json[msg.server.id]['welcome_message'][msg.channel.id] = message
-
-		pingbot.Config("./user/config/server.json").write_json(server_json)
-
-		await text(pingbot.get_message("set_welcome_message_success"), emoji="success")
-
+		
 	async def admin_member_join(self, member):
 		"""
 		on_member_join listener.
 		"""
-		server_json = pingbot.Config("./user/config/server.json").load_json()
-		if member.server.id in server_json:
-			if 'welcome_message' in server_json[member.server.id]:
-				for channel in member.server.channels:
-					if channel.id in server_json[member.server.id]['welcome_message']:
-						welcome_msg = server_json[member.server.id]['welcome_message'][channel.id]
-						await self.bot.send_message(member.server.get_channel(channel.id), welcome_msg.format(member))
-						return
-						
+		admin_json = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()
+		welcome_messages = admin_json["welcome_messages"]
+		for channel in member.server.channels:
+			if channel.id in welcome_messages:
+				welcome_msg = random.choice(welcome_messages[channel.id])
+				if '{' in welcome_msg and '}' in welcome_msg:
+					fmt = welcome_msg.format(member)
+				else:
+					fmt = welcome_msg
+				await text(fmt, no_bold=True, no_mention=True, channel=channel)
+				break
+
+		if len(admin_json["auto_roles"]) > 0 and member.server.id in admin_json["auto_roles"]:
+			for _role in admin_json["auto_roles"][member.server.id]:
+				role = pingbot.utils.get_role_by_name(_role, member.server)
+				if role:
+					await self.bot.add_roles(member, role)
+
+	async def admin_member_remove(self, member):
+		"""
+		on_member_remove listener.
+		"""
+		leave_messages = pingbot.Config('./user/cogs/admin/admin_info.json').load_json()["leave_messages"]
+		for channel in member.server.channels:
+			if channel.id in leave_messages:
+				leave_msg = random.choice(leave_messages[channel.id])
+				if '{' in leave_msg and '}' in leave_msg:
+					fmt = leave_msg.format(member)
+				else:
+					fmt = leave_msg
+				await text(fmt, no_bold=True, no_mention=True, channel=channel)
+				return
+
 def setup(bot):
 	bot.add_listener(Admin(bot).admin_member_join, 'on_member_join')
+	bot.add_listener(Admin(bot).admin_member_remove, 'on_member_remove')
 	bot.add_cog(Admin(bot))

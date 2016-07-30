@@ -40,6 +40,19 @@ def is_disabled_user(*args):
 
 	return commands.check(predicate)
 
+
+def extract_command(string):
+	if string.startswith(pingbot.Config("./user/config/bot.json").load_json()["prefix"]):
+		cmd = string.split()[0]
+		return cmd[len(pingbot.Config("./user/config/bot.json").load_json()["prefix"]):]
+
+def get_role_by_name(name, server):
+	for role in server.roles:
+		if role.name.lower() == name.lower():
+			return role
+
+	return None
+
 class Utils:
 	def __init__(self, bot = None, msg = None):
 		self.bot = bot

@@ -93,7 +93,7 @@ class System:
 ```""".format(pingbot.Errors().get_traceback(*sys.exc_info())))
 
 	@commands.command(pass_context=True)
-	async def join(self, ctx, invite : discord.Invite):
+	async def join(self, ctx, invite : discord.Invite=None):
 		"""
 		⭐ Joins a server.
 
@@ -350,6 +350,7 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 			await text(fmt)
 
 	@_bot.command(name="name", aliases=["change_name", "change-name"], pass_context=True)
+	@pingbot.permissions.is_bot_owner()
 	async def bot_name(self, ctx, *, name: str):
 		"""
 		⭐ Change the bot's username.
@@ -394,6 +395,7 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 		await text("Successfully changed my currently playing game to `{}`!".format(name), emoji=pingbot.get_emoji("success"))
 
 	@_bot.command(name="append_game", aliases=["add_game"], pass_context=True)
+	@pingbot.permissions.is_bot_owner()
 	async def bot_append_game(self, ctx, *, name : str):
 		"""
 		⭐ Adds a game to the bot's list of random currently-playing games.
@@ -415,6 +417,7 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 		await text("Successfully added game: `{}`".format(name), emoji=pingbot.get_emoji("member_update_game"))
 
 	@_bot.command(name="remove_game", aliases=["rem_game", "del_game", "delete_game"], pass_context=True)
+	@pingbot.permissions.is_bot_owner()
 	async def bot_remove_game(self, ctx, *, name : str):
 		"""
 		⭐ Removes a game from the bot's list of random currently-playing games.
@@ -455,6 +458,7 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 		await text("I am now playing, `{}`".format(game), emoji=pingbot.get_emoji("member_update_game"))
 
 	@_bot.command(name="avatar", aliases=["change_avatar"], pass_context=True)
+	@pingbot.permissions.is_bot_owner()
 	async def bot_avatar(self, ctx, url : str):
 		"""
 		⭐ Changes the bot's avatar.
@@ -486,10 +490,6 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 
 		await text("Successfully changed avatar.", emoji=pingbot.get_emoji("member_update_avatar"))
 
-	@commands.command(name="uptime")
-	async def uptime_get(self):
-		await text(self.bot_uptime())
-
 	@commands.group(pass_context=True)
 	@pingbot.permissions.is_bot_owner()
 	async def config(self, ctx):
@@ -505,6 +505,7 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 			await text(pingbot.get_message("config_no_subcommand"), emoji="failure")
 
 	@config.command(name="show", pass_context=True)
+	@pingbot.permissions.is_bot_owner()
 	async def config_show(self, ctx, setting : str):
 		"""
 		⭐ Returns the value of a config setting.
@@ -543,6 +544,7 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 		await text("The value of `{}` is: {}".format(setting, value), emoji="success")
 
 	@config.command(name="set", pass_context=True)
+	@pingbot.permissions.is_bot_owner()
 	async def config_set(self, ctx, setting : str, value : str):
 		"""
 		⭐ Returns the value of a config setting.
@@ -572,6 +574,116 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 		bot_json[setting] = value
 		pingbot.Config("./user/config/bot.json").write_json(bot_json)
 		await text("Successfully set `{}` to {}!".format(setting, value))
+
+	@commands.group(pass_context=True)
+	@pingbot.permissions.is_bot_owner()
+	async def find(self, ctx):
+		"""
+		⭐ Find a property.
+
+		--------------------
+		  USAGE: find <subcommand>
+		EXAMPLE: find member
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			await text("You must provide a subcommand.", emoji="failure")
+
+	@find.command(pass_context=True, name="member", no_pm=True)
+	@pingbot.permissions.is_bot_owner()
+	async def find_member(self, ctx, *, member_prop : str):
+		"""
+		⭐ Returns a list of members who contain a certain property.
+
+		--------------------
+		  USAGE: find member <name or ID>
+		EXAMPLE: find member at
+		--------------------
+		"""
+		results = []
+		for member in ctx.message.server.members:
+			if member_prop.lower() in member.name.lower() or member_prop in member.id:
+				results.append(member)
+
+		if len(results) == 0:
+			await text("Yielded no results.", emoji="failure")
+			return
+
+		if len(results) > 35:
+			counter = 0
+			await text("Found {} members with that name or ID.".format(len(results)), emoji="success")
+			for r in results:
+				counter += 1
+				if not counter > 35:
+					await text("`{}`: {} ({})".format(counter, r, r.id), no_bold=True)
+				else:
+					await text("And {} more...".format(len(results)-35))
+					return
+		else:
+			counter = 0
+			await text("Found {} members with that name or ID.".format(len(results)), emoji="success")
+			for r in results:
+				counter += 1
+				await text("`{}`: {} ({})".format(counter, r, r.id), no_bold=True)
+
+	@find.command(name="server", pass_context=True)
+	async def find_server(self, ctx, *, server_prop : str):
+		"""
+		⭐ Returns a list of servers that contain a certain property in there name or ID.
+
+		--------------------
+		  USAGE: find server <name or ID>
+		EXAMPLE: find server r
+		--------------------
+		"""
+		results = []
+		for server in self.bot.servers:
+			if server_prop.lower() in server.name.lower() or server.name.lower() == server_prop.lower() or server_prop in server.id or server_prop == server.id:
+				results.append(server)
+
+		if len(results) == 0:
+			await text("Yielded no results.", emoji="failure")
+			return
+
+		if len(results) > 35:
+			counter = 0
+			await text("Found {} servers with that name or ID.".format(len(results)))
+			for r in results:
+				counter += 1
+				if not counter > 35:
+					invite = await self.bot.create_invite(r)
+					await text("`{}`: {} ({}) : {}".format(counter, r.name, r.id, invite.url), no_bold=True)
+				else:
+					await text("And {} more...".format(len(results)-35))
+					return
+		else:
+			counter = 0
+			await text("Found {} servers with that name or ID.".format(len(results)), emoji="success")
+			for r in results:
+				counter += 1
+				invite = await self.bot.create_invite(r)
+				await text("`{}`: {} ({}) : {}".format(counter, r.name, r.id, invite.url), no_bold=True)
+
+	@find.command(name="cmd", aliases=["command"], pass_context=True)
+	async def find_cmd(self, ctx, *, cmd_keyword : str):
+		"""
+		⭐ Returns a list of commands that contain a certain keyword.
+
+		--------------------
+		  USAGE: find cmd <keyword>
+		EXAMPLE: find cmd fin
+		--------------------
+		"""
+		results = []
+		for cmd in self.bot.commands:
+			if cmd_keyword.lower() in cmd.lower() or cmd.lower() == cmd_keyword.lower():
+				results.append(cmd)
+
+		if len(results) == 0:
+			await text("Yielded no results.", emoji="failure")
+			return
+
+		await text("**Found {} commands with that name/keyword:** {}".format(len(results), ', '.join(results)), emoji="success", no_bold=True)
 
 	def bot_uptime(self):
 		now = datetime.datetime.utcnow()

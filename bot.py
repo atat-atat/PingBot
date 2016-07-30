@@ -1,8 +1,11 @@
-#from core.pingbot.setup_welcome import Start
+#from core.pingbot.bot_setup import Start
 #Start().start() #start welcome procedure
 
+from core.pingbot.bot_setup import checkup
+
+checkup()
+
 from discord.ext import commands
-from collections import Counter
 from core import pingbot
 from core.pingbot.messages import text, send_help_message, get_help
 import asyncio
@@ -111,11 +114,41 @@ Currently connected to {5} {6} ({7} players!)
 @client.event
 async def on_message(msg):
 	if msg.channel.is_private: #display recent messages in the console
-		pingbot.Utils().cprint("white", "[LOG][{}][Private Message][{}/{}]: {}".format(msg.timestamp, msg.author.name, msg.author.id, msg.content))
+		output = "[LOG][{}][Private Message][{}/{}]: {}".format(msg.timestamp, msg.author.name, msg.author.id, msg.content)
+		cmd_output = "[COMMAND][{}][Private Message]: {} ({}) executed custom command: ".format(msg.timestamp, msg.author.name, msg.author.id)
 	else:
-		pingbot.Utils().cprint("white", "[LOG][{}][{}/{}][{}/{}]: {}".format(msg.timestamp, msg.server.name, msg.channel.name, msg.author.name, msg.author.id, msg.content))
-	
-	await client.process_commands(msg)
+		output = "[LOG][{}][{}/{}][{}/{}]: {}".format(msg.timestamp, msg.server.name, msg.channel.name, msg.author.name, msg.author.id, msg.content)
+		cmd_output = "[COMMAND][{}][{}/{}]: {} ({}) executed custom command: ".format(msg.timestamp, msg.server.name, msg.channel.name, msg.author.name, msg.author.id)
+
+	pingbot.Utils().cprint("white", output)
+
+	bot_json = pingbot.Config("./user/config/bot.json").load_json()
+	if isinstance(bot_json["prefix"], list):
+		cmd_prefix = tuple(bot_json["prefix"])
+	else:
+		cmd_prefix = bot_json["prefix"]
+
+	if msg.content.startswith(cmd_prefix):
+		command = msg.content[len(cmd_prefix):]
+		command = command.split()[0]
+		if command in pingbot.Config("./user/cogs/fun/customcommands.json").load_json():
+			if msg.author.id not in pingbot.Config("./user/cogs/fun/customcommands.json").load_json()[command]["disabled"] and msg.channel.id not in pingbot.Config("./user/cogs/fun/customcommands.json").load_json()[command]["disabled"]:
+				pingbot.Utils().cprint("green", cmd_output + command)
+
+	server_config = pingbot.Config("./user/config/server.json").load_json()
+	if not msg.channel.is_private and msg.server.id in server_config:
+		if msg.channel.id in server_config[msg.server.id]["channels"]:
+			if pingbot.utils.extract_command(msg.content) not in server_config[msg.server.id]["channels"][msg.channel.id]["disabled_commands"]:
+				await client.process_commands(msg)
+			else:
+				await client.send_message(msg.channel, ":thumbsdown: **That command is disabled for this channel.**")
+		elif "members" in server_config[msg.server.id]:
+			if msg.author.id in server_config[msg.server.id]["members"] and pingbot.utils.extract_command(msg.content) not in server_config[msg.server.id]["members"][author.id]["disabled_commands"]:
+				await client.process_commands(msg)
+			else:
+				await client.send_message(msg.channel, ":thumbsdown: **That command is disabled for you.**")
+	else:
+		await client.process_commands(msg)
 
 @client.event
 async def on_command(command, ctx): #log executed commands
@@ -150,21 +183,14 @@ if not debug:
 		elif isinstance(error, pingbot.errors.CommandDisabledUser):
 			await text(pingbot.get_message("command_disabled_user"), channel=ctx.message.channel, mention_user=ctx.message.author, emoji="failure")
 		
-		else:
+		elif isinstance(error, BaseException):
 			pingbot.Utils().cprint("red", pingbot.errors.get_traceback())
 		
-		#	if "error_channel" not in settings:
-		#		await text(pingbot.get_message("error").format(pingbot.errors.get_traceback()), channel=ctx.message.channel, emoji="error", no_mention=True)
-		#		pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.errors.get_traceback()))
-		#	else:
-		#		await text(pingbot.get_message("error_no_extra"), channel=ctx.message.channel, no_mention=True, emoji="error")
-		#		if ctx.message.channel.is_private:
-		#			await text(pingbot.get_message("error_extra_pm").format(ctx, pingbot.errors.get_traceback()), channel=settings["error_channel"], emoji="error", no_mention=True)
-		#		else:
-		#			await text(pingbot.get_message("error_extra").format(ctx, pingbot.errors.get_traceback()), channel=settings["error_channel"], emoji="error", no_mention=True)
-		#		pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.errors.get_traceback()))
-
-		#	log.error('{0.timestamp}: {1}'.format(ctx.message, pingbot.errors.get_traceback()))
+			if "error_channel" in pingbot.Config("./user/config/bot.json").load_json():
+				if ctx.message.channel.is_private:
+					await text(pingbot.get_message("error_extra_pm").format(ctx, pingbot.errors.get_traceback()), channel=pingbot.Config("./user/config/bot.json").load_json()["error_channel"], emoji="error", no_mention=True)
+				else:
+					await text(pingbot.get_message("error_extra").format(ctx, pingbot.errors.get_traceback()), channel=pingbot.Config("./user/config/bot.json").load_json()["error_channel"], emoji="error", no_mention=True)
 
 
 @client.event
@@ -237,7 +263,7 @@ async def on_member_update(before, after):
 	else:
 		start_fmt = pingbot.get_event_message("start_fmt_no_nick").format(before)
 
-	if before != client.user or after != client.user:
+	if before != client.user or after != client.user and not before.bot and not after.bot:
 		if status_channel != None:
 			if before.name != after.name:
 				if status_channel != None:
@@ -323,8 +349,9 @@ async def reload(ctx, *, cogs : str=None):
 	else:
 		reload_cog = []
 		for file in os.listdir('./user/cogs'): #cycle through each file in the /cogs/ directory.
-			if os.path.isfile('./user/cogs/{0}/{0}.py'.format(file)):
-				reload_cog.append("user.cogs.{0}.{0}".format(file))
+			if not file.startswith('_'):
+				if os.path.isfile('./user/cogs/{0}/{0}.py'.format(file)):
+					reload_cog.append("user.cogs.{0}.{0}".format(file))
 
 	if isinstance(reload_cog, list):
 		for cog in reload_cog:
@@ -359,30 +386,33 @@ def load_from_cogs_folder():
 		pingbot.Utils().cprint('red', "[WARNING]: No cogs were found.")
 	else:
 		for cog in found_cogs:
-			try:
-				client.load_extension('user.cogs.{0}.{0}'.format(cog))
-			except:
-				pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.Errors().get_traceback(*sys.exc_info())))
-				sys.exit(1)
-			_cog = cog.replace(".", "/")
-			try: #temporary thing, i know its terrible but ill fix it later
-				cog_data = pingbot.Config("./user/cogs/{0}/{0}_info.json".format(_cog)).load_json()
+			if not cog.startswith("_"):
+				try:
+					client.load_extension('user.cogs.{0}.{0}'.format(cog))
+				except:
+					pingbot.Utils().cprint("red", "UNEXPECTED ERROR:\n{}".format(pingbot.Errors().get_traceback(*sys.exc_info())))
+					sys.exit(1)
+				_cog = cog.replace(".", "/")
+				try: #temporary thing, i know its terrible but ill fix it later
+					cog_data = pingbot.Config("./user/cogs/{0}/{0}_info.json".format(_cog)).load_json()
 
-				cog_name = cog_data.get("name", random.choice(["Unknown", "NA"]))
-				cog_author = cog_data.get("author", random.choice(["Unknown", "NA"]))
-				cog_version = cog_data.get("version", random.choice(["Unknown", "NA"]))
-				cog_description = cog_data.get("description", random.choice(["Unknown", "NA"]))
-			except FileNotFoundError:
-				cog_name = random.choice(["Unknown", "NA"])
-				cog_author = random.choice(["Unknown", "NA"])
-				cog_version = "0.0"
-				cog_description = "No description found."
+					cog_name = cog_data.get("name", random.choice(["Unknown", "NA"]))
+					cog_author = cog_data.get("author", random.choice(["Unknown", "NA"]))
+					cog_version = cog_data.get("version", random.choice(["Unknown", "NA"]))
+					cog_description = cog_data.get("description", random.choice(["Unknown", "NA"]))
+				except FileNotFoundError:
+					cog_name = random.choice(["Unknown", "NA"])
+					cog_author = random.choice(["Unknown", "NA"])
+					cog_version = "0.0"
+					cog_description = "No description found."
 
-			pingbot.Utils().cprint('green', "[LOG]: Loaded cog; {} by {} (v{}) -- {}".format(cog_name, cog_author, cog_version, cog_description))
+				pingbot.Utils().cprint('green', "[LOG]: Loaded cog; {} by {} (v{}) -- {}".format(cog_name, cog_author, cog_version, cog_description))
 
 async def bot_loop():
 	games_list = pingbot.Config('./user/config/bot.json').load_json()["games"]
 	await client.wait_until_ready()
+	if pingbot.Utils().check_start_arg("no_game_loop"):
+		return
 	while not client.is_closed:
 		await client.change_status(game=discord.Game(name=random.choice(games_list)))
 		await asyncio.sleep(60)

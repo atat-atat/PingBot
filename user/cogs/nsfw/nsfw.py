@@ -4,9 +4,11 @@ from core.pingbot.messages import text
 import aiohttp
 import random
 from urllib.parse import quote as urlquote
+from urllib.parse import quote_plus
 import urllib
 import xml.etree.ElementTree as ET
 from imgurpython import ImgurClient
+from bs4 import BeautifulSoup, Tag
 import imgurpython
 import os
 import json
@@ -52,10 +54,8 @@ class NSFW:
     - RedTube API access
     - Yande.re search commands
     - Gelbooru
+    - PornHub
     - And more...
-
-    (Excuse some of the ridiculous command names.)
-    (Actually this entire script is ridiculous, why did I even make this...)
     """
     def __init__(self, bot):
         self.bot = bot
@@ -90,7 +90,7 @@ class NSFW:
             await pingbot.Utils(self.bot, ctx.message).text("This channel is now a NSFW channel.", emoji=emoji["success"])
             return
 
-    @commands.command(name="set-auto-nsfw", pass_context=True, no_pm=True)
+    @commands.command(name="set-auto-nsfw", aliases=["set_auto_nsfw"], pass_context=True, no_pm=True)
     @pingbot.permissions.has_permissions(manage_server=True, manage_channel=True)
     async def _set_auto_nsfw_channel(self, ctx, nsfw_type : str='default'):
         """
@@ -125,9 +125,9 @@ class NSFW:
             await pingbot.Utils(self.bot, ctx.message).text("This channel must be a NSFW channel.", emoji=emoji["failure"])
             return
 
-    @commands.command(name="auto-nsfw-type", aliases=['set-auto-nsfw-type'], pass_context=True, no_pm=True)
+    @commands.command(aliases=["set-auto-nsfw-type", "auto-nsfw-type", "auto_nsfw_type"], pass_context=True, no_pm=True)
     @pingbot.permissions.has_permissions(manage_server=True, manage_channel=True)
-    async def _set_auto_nsfw_type(self, ctx, nsfw_type : str):
+    async def set_auto_nsfw_type(self, ctx, nsfw_type : str):
         """
         🍆 Sets the auto-NSFW channel type.
 
@@ -165,7 +165,7 @@ class NSFW:
         nsfw_types = pingbot.Config(nsfw_config_dir).load_json()["nsfw_types"]
         await pingbot.Utils(self.bot, ctx.message).text("There are {} auto-NSFW types: {}".format(len(nsfw_types.keys()), ', '.join(nsfw_types.keys())))
 
-    @commands.command(name="nsfw-cleanup", pass_context=True)
+    @commands.command(name="nsfw-cleanup", aliases=["nsfw_cleanup"], pass_context=True)
     @pingbot.permissions.has_permissions()
     async def clean_nsfw_content(self, ctx, amount : int=500):
         """
@@ -193,19 +193,28 @@ class NSFW:
                     return True
                 elif 'http://i.imgur.com' in m.content:
                     return True
+                elif 'http://www.pornhub.com' in m.content:
+                    return True
+                elif 'http://www.nuvid.com' in m.content:
+                    return True
+                elif 'http://www.gotporn.com' in m.content:
+                    return True
+                elif 'http://www.xvideos.com' in m.content:
+                    return True
                 elif 'Have fun, ' in m.content:
                     return True
                 elif "You're welcome, " in m.content:
                     return True
                 elif 'Here you go, ' in m.content:
                     return True
+                
         try:
             await self.bot.purge_from(ctx.message.channel, limit=amount+1, check=is_msg)
         except discord.errors.Forbidden:
-            await pingbot.Utils(self.bot, ctx.message).text(no_bot_perm, emoji=emoji["failure"])
+            await text(no_bot_perm, emoji=emoji["failure"])
 
-    @commands.command(name="boobs", aliases=["tits", "melons"], pass_context=True)
-    async def _boobs(self, ctx):
+    @commands.command(aliases=["tits", "melons"], pass_context=True)
+    async def boobs(self, ctx):
         """
         🍆 Returns a random image of some boobs.
 
@@ -224,8 +233,8 @@ class NSFW:
         await pingbot.Utils(self.bot, ctx.message).text("{}, http://media.oboobs.ru/{}".format(random.choice(subtext), image), emoji=pingbot.get_emoji("success"), no_bold=True)
         await self.save_nsfw_file('http://media.oboobs.ru/{}'.format(image), file_name="boobs_" + image)
 
-    @commands.command(name="butt", aliases=["butts", "ass"], pass_context=True)
-    async def _butt(self, ctx):
+    @commands.command(aliases=["butts", "ass"], pass_context=True)
+    async def butt(self, ctx):
         """
         🍆 Returns a random image of a butt.
 
@@ -258,43 +267,450 @@ class NSFW:
             return
 
         kw = urlquote(query)
-        url = "http://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&tags[]={}&thumbsize=medium".format(kw)
+        url = "http://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}&thumbsize=medium".format(kw)
         results = await pingbot.WT().async_json_content(url)
         if "videos" not in results:
-            await pingbot.Utils(self.bot, ctx.message).text(no_results.format(query), emoji=emoji["failure"])
+            await text(no_results.format(query), emoji=emoji["failure"])
             return
         try:
             video_select = random.randint(0, len(results["videos"]))
-            video_title = results["videos"][video_select]["video"]["title"]
-            video_views = results["videos"][video_select]["video"]["views"]
-            video_rating = results["videos"][video_select]["video"]["rating"]
-            video_published = results["videos"][video_select]["video"]["publish_date"]
-            video_duration = results["videos"][video_select]["video"]["duration"]
-            video_tags_len = len(results["videos"][video_select]["video"]["tags"])
-            video_tags = []
-            for i in results["videos"][video_select]["video"]["tags"]:
-                video_tags.append(i["tag_name"])
             video_url = results["videos"][video_select]["video"]["url"]
             video_thumb_int = random.randint(0, len(results["videos"][video_select]["video"]["thumbs"]))
             video_thumb = results["videos"][video_select]["video"]["thumbs"][video_thumb_int]["src"]
         except IndexError:
             video_select = 0
-            video_title = results["videos"][video_select]["video"]["title"]
-            video_views = results["videos"][video_select]["video"]["views"]
-            video_rating = results["videos"][video_select]["video"]["rating"]
-            video_published = results["videos"][video_select]["video"]["publish_date"]
-            video_duration = results["videos"][video_select]["video"]["duration"]
-            video_tags_len = len(results["videos"][video_select]["video"]["tags"])
-            video_tags = []
-            for i in results["videos"][video_select]["video"]["tags"]:
-                video_tags.append(i["tag_name"])
             video_url = results["videos"][video_select]["video"]["url"]
             video_thumb_int = random.randint(0, len(results["videos"][video_select]["video"]["thumbs"]))
             video_thumb = results["videos"][video_select]["video"]["thumbs"][video_thumb_int]["src"]
         try:
-            await pingbot.Utils(self.bot, ctx.message).text("**Title:** {}\n**Views:**{}\n**Rating:** {}\n**Published:** {}\n**Duration:** {}\n**Tags:** {}\n**URL:** {}\n**Thumbnail(out of {}):** {}".format(video_title, video_views, video_rating, video_published, video_duration, ", ".join(video_tags), video_url, len(results["videos"][video_select]["video"]["thumbs"]), video_thumb), no_bold=True)
+            await text("{}\n**Thumbnail:** {}".format(video_url, video_thumb), no_bold=True)
         except discord.errors.HTTPException:
-            await pingbot.Utils(self.bot, ctx.message).text("HTTP Exception error occurred.", emoji=emoji["error"])
+            await text("HTTP Exception error occurred.", emoji=emoji["error"])
+
+    @commands.command(pass_context=True)
+    async def nuvid(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for an item from NuVid
+
+        --------------------
+          USAGE: nuvid <keyword>
+        EXAMPLE: nuvid blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'nuvid'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        query = keyword.replace(" ", "-").lower()
+        url = "http://www.nuvid.com/search/videos/{}".format(query)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if a['href'].startswith('/video/'):
+                results.append("http://www.nuvid.com{}".format(a['href']))
+
+        if len(results) == 0:
+            await text("Yielded no results.")
+            return
+
+        result = random.choice(results)
+        title = result.split('/')
+        title = ' '.join(title[5:])
+        title = title.split('-')
+        title = ' '.join(title)
+
+        await text("**{}**: {}".format(title, result), no_bold=True)
+
+    @commands.command(pass_context=True)
+    async def pornhub(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for an item from PornHub.com
+
+        --------------------
+          USAGE: pornhub <keyword>
+        EXAMPLE: pornhub blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'pornhub'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        query = quote_plus(keyword)
+        url = "http://www.pornhub.com/video/search?search={}".format(query)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if a['href'].startswith('/view_video.php?viewkey='):
+                results.append('http://www.pornhub.com{}'.format(a['href']))
+
+        if len(results) == 0:
+            await text("Yielded no results.")
+            return
+
+        result = random.choice(results)
+        await text(result, no_bold=True)
+
+    @commands.group(pass_context=True, aliases=["hh"])
+    async def hentaihaven(self, ctx):
+        """
+        🍆 Searches for an item from HentaiHaven
+
+        --------------------
+          USAGE: hentaihaven <keyword>
+        EXAMPLE: hentaihaven bible black
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'hentaihaven', 'hh'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        if ctx.invoked_subcommand is None:
+            keyword = ' '.join(ctx.message.content.split()[1:])
+            if ctx.subcommand_passed:
+                keyword = ' '.join(ctx.message.content.split()[1:])
+                query = quote_plus(keyword)
+                url = "http://hentaihaven.org/search/{}".format(query)
+                resp = await pingbot.WT().async_url_content(url)
+                soup = BeautifulSoup(resp, "html.parser")
+                results = []
+                for a in soup.find_all('a', href=True):
+                    if not a['href'].startswith('http://hentaihaven.org/tag/') and not a['href'].startswith('http://hentaihaven.org/series/') and not a['href'].startswith('http://hentaihaven.org/contact-us/') and a['href'].startswith('http://hentaihaven.org/') and a['href'] != "http://hentaihaven.org/pick-your-series/" and a['href'] != "http://hentaihaven.org/pick-your-poison/" and a['href'] != "http://hentaihaven.org/join-us/":
+                        results.append(a['href'])
+
+                if len(results) == 0:
+                    await text("Yielded no results.")
+                    return
+
+                result1 = random.choice(results)
+                results.remove(result1) #make sure we dont get the same results
+                result2 = random.choice(results)
+                results.remove(result2)
+                result3 = random.choice(results)
+
+                r_results = [result1, result2, result3]
+                result = "**Found {} results out of {}**\n{}".format(len(r_results), len(results), "\n".join(r_results))
+                await text(result, emoji="success", no_bold=True)
+                return
+            else: #if no query was provided, then choose from a random tag
+                tags = ["1080p", "ahegao", "alien", "anal", "bdsm", "big-boobs", "blow-job", "bondage", "boob-job", "comedy", "cosplay", "creampie", "demon", "double-penetration", "dubbed", "exclusive", "facial", "femdom", "filmed", "foot-job", "futanari", "gangbang", "gender-bender", "piss", "hand-job", "harem", "horror", "incest", "inflation", "kemonomimi", "lactation", "licking", "loli", "maid", "marathon", "masturbation", "milf", "mind-break", "mindcontrol", "monster", "netorare", "netori", "nurse", "orgy", "plot", "pov", "pregnant", "public-sex", "rape", "raw", "reverse-rape", "rimjob", "scat", "school-girl", "shota", "softcore", "swimsuit", "teacher", "tentacle", "threesome", "toys", "tsundere", "uncensored", "vanilla", "virgin", "x-ray", "yaoi", "yuri"]
+
+                tag = random.choice(tags)
+
+                url = "http://hentaihaven.org/tag/{}/".format(tag)
+                resp = await pingbot.WT().async_url_content(url)
+                soup = BeautifulSoup(resp, "html.parser")
+                results = []
+                for a in soup.find_all('a', href=True):
+                    if '/tag/' not in a['href'] and '/series/' not in a['href'] and a['href'].startswith('http://hentaihaven.org/') and a['href'] != "http://hentaihaven.org/pick-your-series/" and a['href'] != "http://hentaihaven.org" and a['href'] != "http://hentaihaven.org/pick-your-poison/" and a['href'] != "http://hentaihaven.org/contact-us/" and a['href'] != "http://animehaven.org" and a['href'] != "http://hentaihaven.org/join-us/" and 'facebook.com' not in a['href'] and 'google.com' not in a['href'] and 'twitter.com' not in a['href']:
+                        results.append(a['href'])
+
+                if 'http://bit.ly/29TQzA8' in results: #make sure it isnt getting its results from the cloudflare cache
+                    await text("Yielded no results.", emoji="failure")
+                    return
+
+                result = random.choice(results)
+                await text("**{}**: {}".format(tag[0].upper() + tag[1:], result), no_bold=True, emoji="success")
+
+    @hentaihaven.command(pass_context=True, name="random")
+    async def hh_random(self, ctx, tag : str=None):
+        """
+        🍆 Returns a random result from a HentaiHaven tag.
+
+        --------------------
+          USAGE: hentaihaven random <keyword>
+        EXAMPLE: hentaihaven random loli
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'hentaihaven', 'hh'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        if tag == None:
+            tag_ = random.choice(["1080p", "ahegao", "alien", "anal", "bdsm", "big-boobs", "blow-job", "bondage", "boob-job", "comedy", "cosplay", "creampie", "demon", "double-penetration", "dubbed", "exclusive", "facial", "femdom", "filmed", "foot-job", "futanari", "gangbang", "gender-bender", "piss", "hand-job", "harem", "horror", "incest", "inflation", "kemonomimi", "lactation", "licking", "loli", "maid", "marathon", "masturbation", "milf", "mind-break", "mindcontrol", "monster", "netorare", "netori", "nurse", "orgy", "plot", "pov", "pregnant", "public-sex", "rape", "raw", "reverse-rape", "rimjob", "scat", "school-girl", "shota", "softcore", "swimsuit", "teacher", "tentacle", "threesome", "toys", "tsundere", "uncensored", "vanilla", "virgin", "x-ray", "yaoi", "yuri"])
+        else:
+            tag_ = tag
+        url = "http://hentaihaven.org/tag/{}/".format(tag_)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if '/tag/' not in a['href'] and '/series/' not in a['href'] and a['href'].startswith('http://hentaihaven.org/') and a['href'] != "http://hentaihaven.org/pick-your-series/" and a['href'] != "http://hentaihaven.org" and a['href'] != "http://hentaihaven.org/pick-your-poison/" and a['href'] != "http://hentaihaven.org/contact-us/" and a['href'] != "http://animehaven.org" and a['href'] != "http://hentaihaven.org/join-us/" and 'facebook.com' not in a['href'] and 'google.com' not in a['href'] and 'twitter.com' not in a['href']:
+                results.append(a['href'])
+
+        if 'http://bit.ly/29TQzA8' in results: #make sure it isnt getting its results from the cloudflare cache
+            await text("Yielded no results.", emoji="failure")
+            return
+
+        result = random.choice(results)
+        if tag == None:
+            result = "**{}**: {}".format(tag_[0].upper() + tag_[1:], result)
+
+        await text(result, emoji="success")
+
+    @commands.command(pass_context=True, aliases=["hardsextube"])
+    async def gotporn(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for an item from GotPorn/HardSexTube.
+
+        --------------------
+          USAGE: gotporn <keyword>
+        EXAMPLE: gotporn blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'gotporn', 'hardsextube'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        query = urlquote(keyword)
+        url = "http://www.gotporn.com/results?search_query={}&src=ipt:b".format(query)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if 'video-' in a['href'] and a['href'].startswith('http://www.gotporn.com/'):
+                results.append(a['href'])
+
+        if len(results) == 0:
+            await text("Yielded no results.")
+            return
+
+        result = random.choice(results)
+        await text(result)
+
+    @commands.command(pass_context=True)
+    async def drtuber(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for an item from DrTuber
+
+        --------------------
+          USAGE: drtuber <keyword>
+        EXAMPLE: drtuber blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'drtuber'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        query = urlquote(keyword)
+        url = "http://www.drtuber.com/search/videos/{}".format(query)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if a['href'].startswith('/video/'):
+                results.append("http://www.drtuber.com{}".format(a['href']))
+
+        if len(results) == 0:
+            await text("Yielded no results.")
+            return
+        
+        result = random.choice(results)
+        await text(result)
+
+    @commands.command(pass_context=True)
+    async def xhamster(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for an item from xhamster.
+
+        --------------------
+          USAGE: xhamster <keyword>
+        EXAMPLE: xhamster blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'xhamster'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        query = quote_plus(keyword)
+        url = "http://xhamster.com/search.php?from=&new=&q={}&qcat=video".format(query)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if a['href'].startswith('http://xhamster.com/movies/'):
+                results.append(a['href'])
+
+        if len(results) == 0:
+            await text("Yielded no results.")
+            return
+
+        result = random.choice(results)
+        await text(result)
+
+    @commands.command(pass_context=True)
+    async def xvideos(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for an item from xvideos.
+
+        --------------------
+          USAGE: xvideos <keyword>
+        EXAMPLE: xvideos blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'xvideos'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        query = quote_plus(keyword)
+        url = "http://www.xvideos.com/?k={}".format(query)
+        resp = await pingbot.WT().async_url_content(url)
+        soup = BeautifulSoup(resp, "html.parser")
+        results = []
+        for a in soup.find_all('a', href=True):
+            if a['href'].startswith('/video'):
+                results.append("http://www.xvideos.com{}".format(a['href']))
+
+        if len(results) == 0:
+            await text("Yielded no results.")
+            return
+
+        result = random.choice(results)
+        await text(result)
+
+    @commands.command(pass_context=True)
+    async def porn(self, ctx, *, keyword : str):
+        """
+        🍆 Searches for porn from a variety of sources based on a keyword.
+
+        --------------------
+          USAGE: porn <keyword>
+        EXAMPLE: porn blowjob
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'porn'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        source = "http://xhamster.com/search.php?from=&new=&q={}&qcat=video"
+
+        if source == "http://xhamster.com/search.php?from=&new=&q={}&qcat=video":
+            query = quote_plus(keyword)
+            url = "http://xhamster.com/search.php?from=&new=&q={}&qcat=video".format(query)
+
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if a['href'].startswith('http://xhamster.com/movies/'):
+                    results.append(a['href'])
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+
+        source = "http://www.drtuber.com/search/videos/{}"
+
+        if source == "http://www.drtuber.com/search/videos/{}":
+            query = urlquote(keyword)
+            url = "http://xhamster.com/search.php?from=&new=&q={}&qcat=video".format(query)
+
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if a['href'].startswith('/video/'):
+                    results.append("http://www.drtuber.com{}".format(a['href']))
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+
+        source = "http://www.gotporn.com/results?search_query={}&src=ipt:b"
+
+        if source == "http://www.gotporn.com/results?search_query={}&src=ipt:b":
+            query = urlquote(keyword)
+            url = "http://www.gotporn.com/results?search_query={}&src=ipt:b".format(query)
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if 'video-' in a['href'] and a['href'].startswith('http://www.gotporn.com/'):
+                    results.append(a['href'])
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+
+        source = "http://hentaihaven.org/search/{}"
+
+        if source == "http://hentaihaven.org/search/{}":
+            query = quote_plus(keyword)
+            url = "http://hentaihaven.org/search/{}".format(query)
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if not a['href'].startswith('http://hentaihaven.org/tag/') and not a['href'].startswith('http://hentaihaven.org/series/') and not a['href'].startswith('http://hentaihaven.org/contact-us/') and a['href'].startswith('http://hentaihaven.org/'):
+                    print(a['href'])
+                    results.append(a['href'])
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+
+        source = "http://www.pornhub.com/video/search?search={}"
+
+        if source == "http://www.pornhub.com/video/search?search={}":
+            query = quote_plus(keyword)
+            url = "http://www.pornhub.com/video/search?search={}".format(query)
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if a['href'].startswith('/view_video.php?viewkey='):
+                    results.append('http://www.pornhub.com{}'.format(a['href']))
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+
+        source = "http://www.nuvid.com/search/videos/{}"
+
+        if source == "http://www.nuvid.com/search/videos/{}":
+            query = keyword.replace(" ", "-").lower()
+            url = "http://www.nuvid.com/search/videos/{}".format(query)
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if a['href'].startswith('/video/'):
+                    results.append("http://www.nuvid.com{}".format(a['href']))
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+
+        source = "http://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}&thumbsize=medium"
+
+        if source == "http://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}&thumbsize=medium":
+            kw = urlquote(query)
+            url = "http://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search={}&thumbsize=medium".format(kw)
+            results = await pingbot.WT().async_json_content(url)
+            if 'message' not in results:
+                video_select = random.randint(0, len(results["videos"]))
+                video_url = results["videos"][video_select]["video"]["url"]
+                await text(video_url)
+                return
+
+        source = "http://www.xvideos.com/?k={}"
+
+        if source == "http://www.xvideos.com/?k={}":
+            query = quote_plus(keyword)
+            url = "http://www.xvideos.com/?k={}".format(query)
+            resp = await pingbot.WT().async_url_content(url)
+            soup = BeautifulSoup(resp, "html.parser")
+            results = []
+            for a in soup.find_all('a', href=True):
+                if a['href'].startswith('/video'):
+                    results.append("http://www.xvideos.com{}".format(a['href']))
+
+            if len(results) > 0:
+                result = random.choice(results)
+                await text(result)
+                return
+            else:
+                await text("Yielded no results.")
+                return
+
+    @porn.error
+    async def porn_error(self, error, ctx):
+        if isinstance(error, commands.MissingRequiredArgument):
+            if await self.is_disabled_or_no_nsfw(ctx, 'porn'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+                return
+            choice = random.choice(['PetiteGoneWild', 'gonewild', 'porn_gifs', 'ClopClop', 'nsfw_gif', 'nsfw', 'hentai', 'hentaibondage', 'HENTAI_GIF', 'HQHentai', 'HentaiSource', 'Paizuri', 'Futanari', 'Touhou_NSFW', 'MonsterGirl', 'AnimeBooty', 'RealGirls', 'ginger', 'asstastic', 'LipsThatGrip', 'AsiansGoneWild', 'Unashamed', 'nsfw_html5', 'ladybonersgw', 'mangonewild', 'ChristianGirls', 'girlswithglasses', 'DarkAngels', 'gonewildcolor', 'japaneseporn', 'jilling', 'tentai', 'gamersgonewild', 'gayporn', 'LGBTGoneWild', 'publicboys', 'girlsdoingnerdythings', 'rule34'])
+            result = self.return_subreddit_result(choice)
+            await text("{}, {}".format(random.choice(subtext), result.link), emoji="success")
+            await self.save_imgur_file(result, command=choice)
 
     @commands.command(name="gelbooru", pass_context=True)
     async def _gelbooru(self, ctx, *, query : str):
@@ -386,6 +802,8 @@ class NSFW:
         EXAMPLE: e621 dragon
         --------------------
         """
+        if await self.is_disabled_or_no_nsfw(ctx, 'e621'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
         tag = urlquote(keyword)
         url = "https://e621.net/post/index.json?tags={}&limit=10".format(tag)
         resp = await pingbot.WT().async_json_content(url)
@@ -411,24 +829,8 @@ class NSFW:
         await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
         await self.save_imgur_file(result, command="gonewild")
 
-    @commands.command(name="porn_gif", aliases=["porn_gifs"], pass_context=True)
-    async def _porn_gif(self, ctx):
-        """
-        🍆 Returns a random image from the r/porn_gifs subreddit.
-
-        --------------------
-          USAGE: porn_gif
-        EXAMPLE: porn_gif
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'porn_gif', 'porn_gifs'):
-            return
-        result = self.return_subreddit_result('porn_gifs', True)
-        await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'])
-        await self.save_imgur_file(result, command="porn_gif")
-
-    @commands.command(name="hentai", pass_context=True)
-    async def _hentai(self, ctx, include_sub : bool=False):
+    @commands.command(pass_context=True)
+    async def hentai(self, ctx, include_sub : bool=False):
         """
         🍆 Returns a random image from a variety of hentai subreddits.
 
@@ -440,110 +842,6 @@ class NSFW:
         if await self.is_disabled_or_no_nsfw(ctx, 'hentai'):
             return
         choice = random.choice(['hentai', 'hentaibondage', 'HENTAI_GIF', 'HQHentai', 'HentaiSource', 'Paizuri', 'Futanari', 'Touhou_NSFW', 'MonsterGirl', 'AnimeBooty', 'tentai'])
-        result = self.return_subreddit_result(choice)
-        if include_sub == True:
-            await pingbot.Utils(self.bot, ctx.message).text("({}): {}, {}".format(choice, random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        else:
-            await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        await self.save_imgur_file(result, command=choice)
-
-    @commands.command(name="hentai_gif", pass_context=True)
-    async def _hentai_gif(self, ctx):
-        """
-        🍆 Returns a random image from the r/HENTAI_GIF subreddit.
-
-        --------------------
-          USAGE: hentai_gif
-        EXAMPLE: hentai_gif
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'hentai_gif'):
-            return
-        result = self.return_subreddit_result('HENTAI_GIF')
-        await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        await self.save_imgur_file(result, command="hentai_gif")
-
-    @commands.command(name="nsfw_gif", pass_context=True)
-    async def _nsfw_gif(self, ctx):
-        """
-        🍆 Returns a random image from the r/NSFW_GIF subreddit.
-
-        --------------------
-          USAGE: nsfw_gif
-        EXAMPLE: nsfw_gif
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'nsfw_gif'):
-            return
-        result = self.return_subreddit_result('NSFW_GIF')
-        await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        await self.save_imgur_file(result, command="nsfw_gif")
-
-    @commands.command(name="clop", pass_context=True)
-    async def _clop(self, ctx):
-        """
-        🍆 If you're into horses.
-
-        --------------------
-          USAGE: clop
-        EXAMPLE: clop
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'clop'):
-            return
-        result = self.return_subreddit_result('Horses')
-        await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        await self.save_imgur_file(result, command="clop")
-
-    @commands.command(name="clopping", pass_context=True)
-    async def _clopping(self, ctx):
-        """
-        🍆 (This one is for real.)
-
-        --------------------
-          USAGE: clopping
-        EXAMPLE: clopping
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'clopping'):
-            return
-        result = self.return_subreddit_result('ClopClop')
-        await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        await self.save_imgur_file(result, command="clopping")
-
-    @commands.command(name="porn", pass_context=True)
-    async def _all_porn(self, ctx, include_sub : bool=False):
-        """
-        🍆 Returns a random pornographic image.
-
-        --------------------
-          USAGE: porn
-        EXAMPLE: porn
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'porn'):
-            return
-        choice = random.choice(['PetiteGoneWild', 'gonewild', 'porn_gifs', 'ClopClop', 'nsfw_gif', 'nsfw', 'hentai', 'hentaibondage', 'HENTAI_GIF', 'HQHentai', 'HentaiSource', 'Paizuri', 'Futanari', 'Touhou_NSFW', 'MonsterGirl', 'AnimeBooty', 'RealGirls', 'ginger', 'asstastic', 'LipsThatGrip', 'AsiansGoneWild', 'Unashamed', 'nsfw_html5', 'ladybonersgw', 'mangonewild', 'ChristianGirls', 'girlswithglasses', 'DarkAngels', 'gonewildcolor', 'japaneseporn', 'jilling', 'tentai', 'gamersgonewild', 'gayporn', 'LGBTGoneWild', 'publicboys', 'girlsdoingnerdythings', 'rule34'])
-        result = self.return_subreddit_result(choice)
-        if include_sub == True:
-            await pingbot.Utils(self.bot, ctx.message).text("({}): {}, {}".format(choice, random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        else:
-            await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
-        await self.save_imgur_file(result, command=choice)
-
-    @commands.command(name='r34_games', pass_context=True)
-    async def _r34_games(self, ctx, include_sub : bool=False):
-        """
-        🍆 Returns a random rule34 image of a video game character.
-
-        --------------------
-          USAGE: r34_games
-        EXAMPLE: r34_games
-        --------------------
-        """
-        if await self.is_disabled_or_no_nsfw(ctx, 'r34_games'):
-            return
-        choice = random.choice(['portalporn', 'pixelartnsfw', 'Overwatch_Porn', 'mariorule34', 'smashbros34', 'TheLostWoods', 'metroid34', 'pokeporn', 'fire_emblem_r34', 'animalcrossingr34', 'sonic34', 'slutoon', 'FalloutRule34', 'undertail'])
         result = self.return_subreddit_result(choice)
         if include_sub == True:
             await pingbot.Utils(self.bot, ctx.message).text("({}): {}, {}".format(choice, random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
@@ -581,6 +879,26 @@ class NSFW:
             return
         result = self.return_subreddit_result(subreddit)
         await pingbot.Utils(self.bot, ctx.message).text("{}, {}".format(random.choice(subtext), result.link), emoji=emoji['success'], no_bold=True)
+
+    @commands.command(pass_context=True)
+    async def tsumino(self, ctx):
+        """
+        🍆 Returns a random book from Tsumino
+
+        --------------------
+          USAGE: tsumino
+        EXAMPLE: tsumino
+        --------------------
+        """
+        if await self.is_disabled_or_no_nsfw(ctx, 'tsumino'): #check if the command is disabled, or if the server has a NSFW channel and check if the messaged channel is a NSFW channel
+            return
+        url = "http://www.tsumino.com/Browse/Random"
+
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11"})
+
+        url = urllib.request.urlopen(req).geturl()
+
+        await text(url)
 
     async def auto_nsfw(self):
         """

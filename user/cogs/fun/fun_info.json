@@ -1,6 +1,7 @@
 {
-	"name": "Fun Commands",
-	"version": "0.4",
-	"author": "atat",
-	"description": "A collection of fun commands."
+	"description": "A collection of fun commands.", 
+	"version": "0.4", 
+	"author": "atat", 
+	"name": "Fun Commands",	
+	"auto_replies": {}
 }

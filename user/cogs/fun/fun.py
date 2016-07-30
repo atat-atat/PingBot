@@ -5,8 +5,10 @@ from bs4 import BeautifulSoup
 from imgurpython import ImgurClient
 from PIL import Image, ImageSequence
 from core.pingbot.images2gif35 import writeGif
-import os, asyncio, random, wikipedia, discord
+import os, asyncio, random, wikipedia, discord, cairosvg, requests, re, urllib.request
+from core.pingbot import async_cfscrape as cfscrape
 from urllib.parse import quote as urlquote
+from urllib.parse import quote_plus
 
 cb_is_installed = True
 try:
@@ -300,7 +302,7 @@ class Fun:
 		self.modify_note(n_type, note_name, value)
 		await text("Successfully modified note.", emoji=pingbot.get_emoji("success"))
 
-	@commands.command(name="profile", pass_context=True)
+	@commands.command(name="profile", pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def profile_view(self, ctx, member: discord.Member=None):
 		"""
@@ -342,7 +344,7 @@ class Fun:
 Most used command: {3}```""".format(member.name, profile, games, most_used_command)
 		await text(fmt)
 
-	@commands.command(name="respects", pass_context=True)
+	@commands.command(name="respects", pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def respects_view(self, ctx, member: discord.Member=None):
 		"""
@@ -361,7 +363,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 
 		await text("**{} has paid {} respects out of total {} server respects.**".format(member.name, member_respects, total_respects))
 
-	@commands.command(name="top_games", aliases=["top-games"], pass_context=True)
+	@commands.command(name="top_games", aliases=["top-games"], pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_games_list(self, ctx):
 		"""
@@ -400,7 +402,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 {}```""".format(fmt)
 		await text(fmt)
 
-	@commands.command(name="top_members", aliases=["top-members", "top_users", "top-users", "top_talkers", "top-talkers"], pass_context=True)
+	@commands.command(name="top_members", aliases=["top-members", "top_users", "top-users", "top_talkers", "top-talkers"], pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_talkers_list(self, ctx):
 		"""
@@ -436,7 +438,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 {}```""".format(fmt)
 		await text(fmt)
 
-	@commands.command(name="top-commands", aliases=["top_commands"], pass_context=True)
+	@commands.command(name="top-commands", aliases=["top_commands"], pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_commands_used(self, ctx):
 		"""
@@ -470,7 +472,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 {}```""".format(fmt)
 		await text(fmt)
 
-	@commands.command(name="top_notes", aliases=["top-notes"], pass_context=True)
+	@commands.command(name="top_notes", aliases=["top-notes"], pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def top_notes_used(self, ctx):
 		"""
@@ -548,26 +550,6 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 			await text("No topics found.", emoji=pingbot.get_emoji("failure"))
 			return
 		await text("**{}:** {}\n{}".format(_topic.title, topic, _topic.url), no_bold=True, emoji=pingbot.get_emoji("wikipedia"))
-
-	@commands.command(pass_context=True, name="youtube")
-	@pingbot.permissions.has_permissions(send_messages=True)
-	async def _youtube(self, ctx, *, query : str):
-		"""
-		🎭 Searches for a video from YouTube based on a keyword.
-
-		--------------------
-		  USAGE: youtube <keyword>
-		EXAMPLE: youtube dogs
-		--------------------
-		"""
-		url = "https://www.youtube.com/results?search_query=" + query
-		url = url.replace(" ", "%20")
-		response = await pingbot.WT(url).async_url_content()
-		soup = BeautifulSoup(response, "html.parser")
-		vids = soup.findAll(attrs={'class':'yt-uix-tile-link'})
-		vid = vids[0]
-		video = 'https://www.youtube.com' + vid['href']
-		await text(video)
 
 	@commands.command(pass_context=True, name="urban")
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -739,6 +721,7 @@ Contributed  {}
 		cmd_json[name]["creation_date"] = ctx.message.timestamp.strftime("%Y-%m-%d")
 		cmd_json[name]["content"] = content
 		cmd_json[name]["uses"] = []
+		cmd_json[name]["disabled"] = []
 		self.write_command(cmd_json)
 
 		await text("Successfully created command!", emoji=pingbot.get_emoji("success"))
@@ -809,6 +792,7 @@ Contributed  {}
 		cmd_json[new_name]["creation_date"] = old_cmd["creation_date"]
 		cmd_json[new_name]["content"] = old_cmd["content"]
 		cmd_json[new_name]["uses"] = old_cmd["uses"]
+		cmd_json[new_name]["disabled"] = old_cmd["disabled"]
 		self.write_command(cmd_json)
 
 		await text("Successfully renamed command from {} to {}!".format(old_name, new_name), emoji=pingbot.get_emoji("success"))
@@ -898,7 +882,7 @@ Contributed  {}
 
 	@commands.group(name="imgur", pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
-	async def imgur(self, ctx, *, keyword : str):
+	async def imgur(self, ctx):
 		"""
 		🎭 Returns a result from imgur based on a keyword.
 
@@ -908,7 +892,8 @@ Contributed  {}
 		--------------------
 		"""
 		if ctx.invoked_subcommand is None:
-			results = imgur_client.gallery_search(ctx.subcommand_passed)
+			query = ' '.join(ctx.message.content.split()[1:])
+			results = imgur_client.gallery_search(query)
 			try:
 				result = random.choice(results).link
 			except IndexError:
@@ -1090,6 +1075,7 @@ Contributed  {}
 		os.remove('./core/data/finished_product.gif')
 
 	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
 	async def latex(self, ctx, *text):
 		"""
 		🎭 Converts unformated LaTeX into an image.
@@ -1113,6 +1099,343 @@ Contributed  {}
 
 		await self.bot.upload('./user/cogs/fun/latex_image.png')
 		os.remove('./user/cogs/fun/latex_image.png')
+
+	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def howlong(self, ctx, *, birthdate : str):
+		"""
+		🎭 Find out how long you have left to live.
+
+		--------------------
+		  USAGE: howlong <birthdate> <gender>
+		EXAMPLE: howlong 22 April 1977 female
+		--------------------
+		"""
+		msg_content = ctx.message.content.split()
+		birthdate = " ".join(msg_content[:len(msg_content)-1])
+		gender = msg_content[len(msg_content)-1]
+		if gender != "female" or gender != "male":
+			gender = "male" #if no gender is provided, default to male
+
+		url = "https://life-left.p.mashape.com/time-left"
+		resp = pingbot.urlopen2.urlopen(url, headers={"X-Mashape-Key": "bx1DG3z8UNmshXnRMAM5BnK9LE70p1LLzf8jsnxDeV1qW14XEP", "Accept": "application/json"}, params={"birth": birthdate, "gender": gender}).json
+		if 'data' not in resp:
+			await text("Error while trying to get data.", emoji="failure")
+			return
+		await text("You have {} left to live.".format(resp['data']['dateString']), emoji=":skull:")
+
+	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def svg2png(self, ctx, url : str, width : int=None, height : int=None, antialias : bool=False):
+		"""
+		🎭 Converts an SVG file to PNG.
+
+		--------------------
+		  USAGE: svg2png <emoji> <optional: width> <optional: height> <optional: use antialias>
+		EXAMPLE: svg2png https://discordapp.com/assets/cae9e3b02af6e987442df2953de026fc.svg
+		--------------------
+		"""
+		resp = pingbot.urlopen2.urlopen(url, headers={"User-Agent": "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11"}).string
+		with open('./core/data/cache/svg_data.svg', 'w+') as f:
+			f.write(resp)
+		try:
+			cairosvg.svg2png(url='./core/data/cache/svg_data.svg', width=450, height=450, write_to='./core/data/cache/svg_final.png')
+		except ValueError:
+			os.remove('./core/data/cache/svg_data.svg')
+			await text("Unknown url type.", emoji="failure")
+			return
+		os.remove('./core/data/cache/svg_data.svg')
+
+		#Resize
+		if width != None and height != None:
+			img = Image.open('./core/data/cache/svg_final.png')
+			if antialias:
+				img = img.resize((width, height), Image.ANTIALIAS)
+			else:
+				img = img.resize((width, height))
+			img.save('./core/data/cache/svg_final.png', "PNG")
+		await self.bot.upload('./core/data/cache/svg_final.png')
+		os.remove('./core/data/cache/svg_final.png')
+
+	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def resize(self, ctx, url : str, width : int, height : int, antialias : bool=False):
+		"""
+		🎭 Resizes an image from a URL.
+
+		--------------------
+		  USAGE: resize <url> <width> <height> <optional: use antialias>
+		EXAMPLE: resize https://cdn.discordapp.com/attachments/163186305864433664/205392818104041473/svg_final.png 800 800
+		--------------------
+		"""
+		resp = await pingbot.WT().async_url_content(url)
+		with open('./core/data/cache/image_resize_data.png', 'wb+') as f:
+			f.write(resp)
+
+		img = Image.open('./core/data/cache/image_resize_data.png')
+		if antialias:
+			img = img.resize((width, height), Image.ANTIALIAS)
+		else:
+			img = img.resize((width, height))
+		img.save('./core/data/cache/image_resize_final.png', "PNG")
+		await self.bot.upload('./core/data/cache/image_resize_final.png')
+
+		os.remove('./core/data/cache/image_resize_data.png')
+		os.remove('./core/data/cache/image_resize_final.png')
+
+	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def google(self, ctx, *, keyword : str):
+		"""
+		🎭 Searches Google.
+
+		--------------------
+		  USAGE: google <keyword>
+		EXAMPLE: google cats
+		--------------------
+		"""
+		query = quote_plus(keyword)
+		url = "https://www.google.com/search?q={}".format(query)
+		r = requests.get(url)
+		soup = BeautifulSoup(r.text, "html.parser")
+
+		await text("https://{}".format(soup.find('cite').text))
+
+	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def image(self, ctx, *, keyword : str):
+		"""
+		🎭 Searches Google Images (this will only output the thumbnail of the image.)
+
+		--------------------
+		  USAGE: image <keyword>
+		EXAMPLE: image cats
+		--------------------
+		"""
+		query = quote_plus(keyword)
+		url = "https://www.google.com/search?q={}&biw=1242&bih=585&source=lnms&tbm=isch&sa=X&ved=0ahUKEwjbuJKD-oLOAhUB0mMKHWe_D88Q_AUICCgD".format(query)
+		resp = pingbot.urlopen2.urlopen(url, headers={"User-Agent": "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11"}).string
+		soup = BeautifulSoup(resp, "html.parser")
+		images = [a['src'] for a in soup.find_all("img", {"src": re.compile("gstatic.com")})]
+		result = random.choice(images)
+
+		await text("{}".format(result))
+
+	@commands.command(name="L", aliases=["l"], pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def output_l(self, ctx):
+		"""
+		🎭 Outputs a colorful emojified 'L'
+
+		--------------------
+		  USAGE: L
+		EXAMPLE: L
+		--------------------
+		"""
+		fmt = """{}
+{}
+{}
+{}
+{}{}{}"""
+#		fmt2 ="""                   {}
+#	               {}
+#	               {}
+#	               {}
+#{}{}{}"""
+		#fmt = random.choice([fmt1, fmt2])
+		emojis = ["🆗", "😂", "💯", "👌", "🍆", "🆒", "💦", "😩", "🎲", "🙈"]
+		emoji1 = random.choice(emojis)
+		emoji2 = random.choice(emojis)
+		emoji3 = random.choice(emojis)
+		emoji4 = random.choice(emojis)
+		emoji5 = random.choice(emojis)
+		emoji6 = random.choice(emojis)
+		emoji7 = random.choice(emojis)
+		await text(fmt.format(random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7]), random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7]), random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7]), random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7]), random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7]), random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7]), random.choice([emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7])), no_bold=True, no_mention=True)
+
+	@commands.command(pass_context=True)
+	@pingbot.permissions.has_permissions(send_messages=True)
+	async def textwall(self, ctx, *, strings : str):
+		"""
+		🎭 Outputs a wall of randomized text based on provided strings.
+
+		--------------------
+		  USAGE: textwall <strings seperated with spaces>
+		EXAMPLE: textwall :game_die: :robot: :moneybag:
+		--------------------
+		"""
+		strings = strings.split()
+		fmt = """{}{}{}{}
+{}{}{}{}
+{}{}{}{}
+{}{}{}{}"""
+		string1 = random.choice(strings)
+		string2 = random.choice(strings)
+		string3 = random.choice(strings)
+		string4 = random.choice(strings)
+		string5 = random.choice(strings)
+		string6 = random.choice(strings)
+		string7 = random.choice(strings)
+		string8 = random.choice(strings)
+		string9 = random.choice(strings)
+		string10 = random.choice(strings)
+		string11 = random.choice(strings)
+		string12 = random.choice(strings)
+		string13 = random.choice(strings)
+		string14 = random.choice(strings)
+		string15 = random.choice(strings)
+		string16 = random.choice(strings)
+		await text(fmt.format(random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]),random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12]), random.choice([string1, string2, string3, string4, string5, string6, string7, string8, string9, string10, string11, string12])), no_bold=True, no_mention=True)
+
+	@commands.group(pass_context=True)
+	async def kissanime(self, ctx):
+		"""
+		🎭 KissAnime information retriever.
+
+		--------------------
+		  USAGE: kissanime <subcommand>
+		EXAMPLE: kissanime updated
+		--------------------
+		"""
+		if ctx.invoked_subcommand is None:
+			if ctx.subcommand_passed is None:
+				await text("You must provide a query.")
+				return
+
+			query = ' '.join(ctx.message.content.split()[1:])
+			url = "http://kissanime.to/Search/anime/{}".format(query.replace(' ', '%20').lower())
+			scraper = cfscrape.create_scraper()
+			msg = await self.bot.send_message(ctx.message.channel, "Waiting for Cloudflare...")
+			resp = scraper.get(url).content  # => "<!DOCTYPE html><html><head>..."
+			await self.bot.delete_message(msg)
+
+			soup = BeautifulSoup(resp, "html.parser")
+
+			results = []
+			#results = [{"name": "url"}, {etc}]
+
+			found_all = soup.find_all('a', href=True)
+
+			query = query.replace(' ', '-').lower()
+			if '.' in query:
+				query = query.replace('.', '')
+
+			for f in found_all:
+				#print(f['href'])
+				if f['href'].startswith('/Anime/') and 'Episode' not in f['href'] and query in f['href'].lower():
+					results.append("http://kissanime.to" + f['href'])
+			#20
+			if len(results) == 0:
+				await text("Yielded no results.", emoji="failure")
+				return
+			await text('\n'.join(results[:20]))
+
+	@kissanime.command(name="updated", aliases=["latest"], pass_context=True)
+	async def kissanime_latestupdate(self, ctx):
+		"""
+		🎭 Returns the latest episode updates from KissAnime.
+
+		--------------------
+		  USAGE: kissanime updated
+		EXAMPLE: kissanime updated
+		--------------------
+		"""
+		scraper = cfscrape.create_scraper()  # returns a CloudflareScraper instance
+		# Or: scraper = cfscrape.CloudflareScraper()  # CloudflareScraper inherits from requests.Session
+		msg = await self.bot.send_message(ctx.message.channel, "Waiting for Cloudflare...")
+		resp = scraper.get("http://kissanime.to/AnimeList/LatestUpdate").content  # => "<!DOCTYPE html><html><head>..."
+		await self.bot.delete_message(msg)
+
+		soup = BeautifulSoup(resp, "html.parser")
+
+		results = []
+		#results = [{"name": "url"}, {etc}]
+
+		found_all = soup.find_all('a')
+
+		for f in found_all:
+			if f['href'].startswith('/Anime/'):
+				results.append("http://kissanime.to" + f['href'])
+		#20
+		await text('\n'.join(results[:20]))
+
+	@kissanime.command(name="popular", pass_context=True)
+	async def kissanime_popular(self, ctx):
+		"""
+		🎭 Returns the most popular anime.
+
+		--------------------
+		  USAGE: kissanime popular
+		EXAMPLE: kissanime popular
+		--------------------
+		"""
+		scraper = cfscrape.create_scraper()  # returns a CloudflareScraper instance
+		# Or: scraper = cfscrape.CloudflareScraper()  # CloudflareScraper inherits from requests.Session
+		msg = await self.bot.send_message(ctx.message.channel, "Waiting for Cloudflare...")
+		resp = scraper.get("http://kissanime.to/AnimeList/MostPopular").content  # => "<!DOCTYPE html><html><head>..."
+		await self.bot.delete_message(msg)
+
+		soup = BeautifulSoup(resp, "html.parser")
+
+		results = []
+		#results = [{"name": "url"}, {etc}]
+
+		found_all = soup.find_all('a')
+
+		for f in found_all:
+			if f['href'].startswith('/Anime/') and 'Episode' not in f['href']:
+				results.append("http://kissanime.to" + f['href'])
+
+		await text('\n'.join(results[:20]))
+
+	@kissanime.command(name="newest", aliases=["new"], pass_context=True)
+	async def kissanime_newest(self, ctx):
+		"""
+		🎭 Returns the newest anime.
+
+		--------------------
+		  USAGE: kissanime new
+		EXAMPLE: kissanime new
+		--------------------
+		"""
+		scraper = cfscrape.create_scraper()  # returns a CloudflareScraper instance
+		# Or: scraper = cfscrape.CloudflareScraper()  # CloudflareScraper inherits from requests.Session
+		msg = await self.bot.send_message(ctx.message.channel, "Waiting for Cloudflare...")
+		resp = scraper.get("http://kissanime.to/AnimeList/Newest")  # => "<!DOCTYPE html><html><head>..."
+		resp = resp.content
+		await self.bot.delete_message(msg)
+
+		soup = BeautifulSoup(resp, "html.parser")
+
+		results = []
+		#results = [{"name": "url"}, {etc}]
+
+		found_all = soup.find_all('a')
+
+		for f in found_all:
+			if f['href'].startswith('/Anime/') and 'Episode' not in f['href']:
+				results.append("http://kissanime.to" + f['href'])
+
+		await text('\n'.join(results[:20]))
+
+	@commands.command(pass_context=True)
+	async def wayback(self, ctx, website_url : str):
+		"""
+		🎭 Access the Wayback Machine.
+
+		--------------------
+		  USAGE: wayback <website url>
+		EXAMPLE: wayback example.com
+		--------------------
+		"""
+		url = "http://archive.org/wayback/available?url={}".format(urlquote(website_url))
+		resp = await pingbot.WT().async_json_content(url)
+
+		if len(resp["archived_snapshots"]) == 0:
+			await text("Yielded no results.")
+			return
+
+		await text(resp["archived_snapshots"]["closest"]["url"])
 
 #---------------- Events ----------------#
 
@@ -1139,15 +1462,70 @@ Contributed  {}
 			cmd_json = self.load_commands()
 			command = msg.content[len(cmd_prefix):]
 			command = command.split()[0]
-			if command not in self.bot.commands and command in cmd_json:
-				if msg.author.id not in cmd_json[command]["uses"] and msg.author.id != cmd_json[command]["creator"]:
-					cmd_json[command]["uses"].append(msg.author.id)
+			if command in cmd_json:
+				if msg.author.id not in cmd_json[command]["disabled"] and msg.channel.id not in cmd_json[command]["disabled"]:
+					if command not in self.bot.commands:
+						if msg.author.id not in cmd_json[command]["uses"] and msg.author.id != cmd_json[command]["creator"]:
+							cmd_json[command]["uses"].append(msg.author.id)
 
-				if '|' in cmd_json[command]["content"]:
-					cmd_content = random.choice(cmd_json[command]["content"].split('|'))
+						if '|' in cmd_json[command]["content"]:
+							cmd_content = cmd_json[command]["content"].split('|')
+						else:
+							cmd_content = cmd_json[command]["content"]
+
+						if isinstance(cmd_content, list):
+							value = random.choice(cmd_content)
+							if ' ' not in value and 'http://' in value or 'https://' in value:
+								if 'tumblr.com' not in value:
+									images = await pingbot.WT().retrieve_html_images(value)
+									if len(images) == 0:
+										cmd_content = value
+									else:
+										cmd_content = random.choice(images)
+								else:
+									images = await pingbot.WT().retrieve_html_images(value, tumblr=True)
+									if len(images) == 0:
+										cmd_content = value
+									else:
+										cmd_content = random.choice(images)
+							elif value.startswith('subreddit:'):
+								subreddit = value[len("subreddit:"):]
+								results = pingbot.WT().return_subreddit_result(subreddit)
+								if results == None:
+									cmd_content = value
+								else:
+									cmd_content = (random.choice(results)).link
+							else:
+								cmd_content = value
+						else:
+							if ' ' not in cmd_json[command]["content"] and 'http://' in cmd_json[command]["content"] or 'https://' in cmd_json[command]["content"] and '.tumblr.' not in cmd_json[command]["content"]:
+								images = await pingbot.WT().retrieve_html_images(cmd_json[command]["content"])
+								if len(images) == 0:
+									print("No images found")
+									cmd_content = cmd_json[command]["content"]
+								else:
+									cmd_content = random.choice(images)
+							elif '.tumblr.' in cmd_json[command]["content"]:
+								images = await pingbot.WT().retrieve_html_images(cmd_json[command]["content"], tumblr=True)
+								if len(images) == 0:
+									cmd_content = cmd_json[command]["content"]
+								else:
+									cmd_content = random.choice(images)
+							elif cmd_json[command]["content"].startswith('subreddit:'):
+								subreddit = cmd_json[command]["content"]
+								subreddit = subreddit[len("subreddit:"):]
+								results = pingbot.WT().return_subreddit_result(subreddit)
+								if results == None:
+									cmd_content = cmd_json[command]["content"]
+								else:
+									cmd_content = (random.choice(results)).link
+							else:
+								cmd_content = cmd_json[command]["content"]
+						await self.bot.send_message(msg.channel, cmd_content)
+				elif msg.channel.id in cmd_json[command]["disabled"]: #if the command is disabled for the author, or the channel (ill rework the channel author thing later)
+					await self.bot.send_message(msg.channel, ":thumbsdown: **That command is disabled.**")
 				else:
-					cmd_content = cmd_json[command]["content"]
-				await self.bot.send_message(msg.channel, cmd_content)
+					await self.bot.send_message(msg.channel, ":thumbsdown: **That command is disabled for you.**")
 		
 		if msg.content.startswith("<@{}>".format(self.bot.user.id)):
 			content = msg.content[len("<@{}>".format(self.bot.user.id)):]
@@ -1164,38 +1542,40 @@ Contributed  {}
 
 		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
 		if msg.author != self.bot.user and not msg.author.bot:
-			if msg.content in auto_replies["auto_replies"]:
-				await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.content])
-			else:
-				for reply in auto_replies["auto_replies"]:
-					if reply.startswith(":"):
-						msg_content = msg.content.split()
-						#reply_instig = auto_replies
-						#reply = auto_replies["auto_replies"][reply]
-						_reply = reply[len(":"):]
-						if _reply in msg_content:
-							await self.bot.send_message(msg.channel, auto_replies["auto_replies"][reply])
-							return
+			if not msg.channel.is_private and msg.server.id in auto_replies["auto_replies"]:
+				if msg.content in auto_replies["auto_replies"][msg.server.id]:
+					await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][msg.content])
+				else:
+					for reply in auto_replies["auto_replies"][msg.server.id]:
+						if reply.startswith(":"):
+							msg_content = msg.content.split()
+							#reply_instig = auto_replies
+							#reply = auto_replies["auto_replies"][reply]
+							_reply = reply[len(":"):]
+							if _reply in msg_content:
+								await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][reply])
+								return
 
 	async def fun_member_update(self, before, after):
 		"""
 		on_member_update listener.
 		"""
-		if before.game != after.game and after.game != None and not after.bot:
-			self.setup_profile_server_ifno(after.server.id)
-			self.setup_profile_member_ifno(after.server.id, after.id)
-			self.append_game_ifno(after.server.id, after.id, after.game.name)
-			self.increase_game(after.server.id, after.id, after.game.name)
+		if before.game != after.game and after.game != None:
+			if not after.bot or not before.bot:
+				self.setup_profile_server_ifno(after.server.id)
+				self.setup_profile_member_ifno(after.server.id, after.id)
+				self.append_game_ifno(after.server.id, after.id, after.game.name)
+				self.increase_game(after.server.id, after.id, after.game.name)
 
-			status_channel = pingbot.Config("./user/config/server.json").load_json()[after.server.id]["status_channel"]
-			if before.nick != None:
-				start_fmt = pingbot.get_event_message("start_fmt_with_nick").format(before, before.nick)
-			else:
-				start_fmt = pingbot.get_event_message("start_fmt_no_nick").format(before)
+				status_channel = pingbot.Config("./user/config/server.json").load_json()[after.server.id]["status_channel"]
+				if before.nick != None:
+					start_fmt = pingbot.get_event_message("start_fmt_with_nick").format(before, before.nick)
+				else:
+					start_fmt = pingbot.get_event_message("start_fmt_no_nick").format(before)
 
-			if status_channel != None and not before.bot:
-				await text(start_fmt + pingbot.get_event_message("member_game_update").format(after.game.name, self.get_gameplay_count(after.server.id, after.id, after.game.name)), channel=status_channel, emoji="member_update_game", no_mention=True)
-				#await pingbot.Utils(self.bot).text_status(start_fmt + " is now playing *{}* (launched `{}` times!)".format(before.name, after.game.name, self.get_gameplay_count(after.server.id, after.id, after.game.name)), status_channel, emoji=emoji["member_update_game"])
+				if status_channel != None:
+					await text(start_fmt + pingbot.get_event_message("member_game_update").format(after.game.name, self.get_gameplay_count(after.server.id, after.id, after.game.name)), channel=status_channel, emoji="member_update_game", no_mention=True)
+					#await pingbot.Utils(self.bot).text_status(start_fmt + " is now playing *{}* (launched `{}` times!)".format(before.name, after.game.name, self.get_gameplay_count(after.server.id, after.id, after.game.name)), status_channel, emoji=emoji["member_update_game"])
 
 	async def fun_server_join(self, server):
 		"""

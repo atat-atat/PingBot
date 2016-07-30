@@ -12,6 +12,9 @@ from .myanimelist import *
 from .messages import *
 from .omdb import *
 from .giphy import *
+from .urlopen2 import *
+from .bot_setup import *
+from .async_cfscrape import *
 
 def get_emoji(emoji):
 	"""

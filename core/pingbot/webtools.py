@@ -1,5 +1,7 @@
-import core.pingbot, aiohttp, requests, asyncio, youtube_dl, re, urllib.request, urllib.parse, urllib.error
-from bs4 import BeautifulSoup
+import aiohttp, requests, asyncio, youtube_dl, re, urllib.request, urllib.parse, urllib.error, imgurpython
+from imgurpython import ImgurClient
+from core import pingbot
+from bs4 import BeautifulSoup, Tag
 from html.entities import name2codepoint
 
 class WT:
@@ -13,7 +15,7 @@ class WT:
 	def url_content(self, url = None):
 		if url == None:
 			if self._url == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing web_get; No url provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing web_get; No url provided.")
 			else:
 				url = self._url
 		req = urllib.request.Request(url)
@@ -28,12 +30,12 @@ class WT:
 		"""
 		if url == None:
 			if self._url == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing web_get; No url provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing web_get; No url provided.")
 			else:
 				url = self._url
 
 		if not url.startswith('http'): 
-			raise core.pingbot.errors.PingBotError("An error has occurred while executing web_get; Bad link.")
+			raise pingbot.errors.PingBotError("An error has occurred while executing web_get; Bad link.")
 
 		opener = urllib.request.build_opener()
 		opener.addheaders = [('User-agent', 'Mozilla/5.0')]
@@ -54,12 +56,12 @@ class WT:
 	def div_get(self, dtype, content, query = None, url=None): #ripped straight from original div_get function (ill change this a bit later.)
 		if url == None:
 			if self._url == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing div_get; No URL provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing div_get; No URL provided.")
 			else:
 				url = self._url
 		if query == None:
 			if self._query == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing div_get; No query provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing div_get; No query provided.")
 			else:
 				query = self._query
 
@@ -99,7 +101,7 @@ class WT:
 		"""
 		if url == None:
 			if self._url == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing async_resp_content; No URL provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing async_resp_content; No URL provided.")
 			else:
 				url = self._url
 		async with aiohttp.get(url) as r:
@@ -112,7 +114,7 @@ class WT:
 		"""
 		if url == None:
 			if self._url == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing async_resp_content; No URL provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing async_resp_content; No URL provided.")
 			else:
 				url = self._url
 
@@ -126,7 +128,7 @@ class WT:
 		"""
 		if url == None:
 			if self._url == None:
-				raise core.pingbot.errors.PingBotError("An error has occurred while executing async_save_image; No URL provided.")
+				raise pingbot.errors.PingBotError("An error has occurred while executing async_save_image; No URL provided.")
 			else:
 				url = self._url
 
@@ -145,3 +147,75 @@ class WT:
 		video = 'https://www.youtube.com' + vid['href']
 		return video
 
+	async def retrieve_html_images(self, url, **kwargs):
+		"""
+		Extract HTML img tags or meta image tags from a website, or tumblr blog.
+		"""
+		is_tumblr_link = kwargs.get('tumblr', False)
+		#resp = await self.async_url_content(url)
+		resp = urllib.request.urlopen(url) #aiohttp isnt too good with redirecting URLs, and since most of the time users would most likely provide the random link of a tumblr blog, i will just use urllib for now
+
+		soup = BeautifulSoup(resp, "html.parser")
+		images = []
+		image = {}
+
+		img_list = soup.findAll('meta', {"property":'og:image'})
+		for og_image in img_list:
+			if not og_image.get('content'):
+				continue
+
+			image = {'url': og_image['content']}
+			next = og_image.nextSibling.nextSibling # calling once returns end of line char '\n'
+
+			if next and isinstance(next, Tag) and next.get('property', '').startswith('og:image:'):
+				dimension = next['content']
+				prop = next.get('property').rsplit(':')[-1]
+				image[prop] = dimension
+
+				next = next.nextSibling.nextSibling
+				if next and isinstance(next, Tag) and next.get('property', '').startswith('og:image:'):
+					dimension = next['content']
+					prop = next.get('property').rsplit(':')[-1]
+					image[prop] = dimension
+
+			if not is_tumblr_link:
+				if 'srvcs.tumblr' not in image['url'] and 'avatar' not in image['url'] and image['url'].startswith('/'.join(url.split('/')[:3])):
+					images.append(image['url'])
+			else:
+				if 'srvcs.tumblr' not in image['url'] and 'avatar' not in image['url']:
+					images.append(image['url'])
+
+		for img in soup.findAll('img'):
+			if not is_tumblr_link:
+				if 'gravatar' not in img.get('src') and 'srvcs.tumblr' not in img.get('src') and 'avatar' not in img.get('src') and img.get('src').startswith('/'.join(url.split('/')[:3])):
+					images.append(img.get('src'))
+			else:
+				if 'gravatar' not in img.get('src') and 'srvcs.tumblr' not in img.get('src') and 'avatar' not in img.get('src'):
+					images.append(img.get('src'))
+
+		for ima in images:
+			if 'img.youtube' in ima:
+				images.remove(ima)
+
+		return images
+
+	def return_subreddit_result(self, subreddit, sort=None):
+		"""
+		Returns a random item from a subreddit.
+		"""
+		config = pingbot.Config("./user/config/bot.json").load_json()
+		imgur_clientid = config['imgur']['client_id']
+		imgur_clientsecret = config['imgur']['client_secret']
+		imgur_client = ImgurClient(imgur_clientid, imgur_clientsecret)
+		if sort != None:
+			try:
+				result = imgur_client.subreddit_gallery(subreddit, sort=sort)
+				return result
+			except IndexError:
+				return None
+		else:
+			try:
+				result = imgur_client.subreddit_gallery(subreddit)
+				return result
+			except IndexError:
+				return None
