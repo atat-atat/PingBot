@@ -111,7 +111,7 @@ def has_permissions(**perms):
 				pass
 			elif "members" in server_json[ctx.message.server.id] and member.id not in server_json[ctx.message.server.id]["members"]:
 				pass
-			elif ctx.command.name in server_json[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] or ctx.command.name in server_json[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
+			elif ctx.command.name in server_json[ctx.message.server.id]["channels"][ctx.message.channel.id]["disabled_commands"] or "members" in server_json[ctx.message.server.id and ctx.command.name in server_json[ctx.message.server.id]["members"][member.id]["disabled_commands"]:
 				raise commands.DisabledCommand("Command '{}' is disabled!".format(ctx.command))
 			
 		channel = ctx.message.channel
