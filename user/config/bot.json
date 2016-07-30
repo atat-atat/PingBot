@@ -1,15 +1,24 @@
 {
-	"client_id": "", 
-	"token": "", 
-	"osu_key": "", 
-	"games": [], 
-	"myanimelist": {"password": "", "username": ""}, 
-	"bot_owners": [""], 
-	"username": "PingBot", 
 	"mention_messages": [], 
-	"prefix": "$", 
+	"myanimelist": {
+		"password": "", 
+		"username": ""
+	}, 
 	"imgur": {
 		"client_id": "", 
 		"client_secret": ""
-	}
+	}, 
+	"github": {
+		"client_id": "",
+		"client_secret": "",
+		"access_token": ""
+	},
+	"error_channel": "", 
+	"bot_owners": [], 
+	"osu_key": "", 
+	"client_id": "", 
+	"token": "", 
+	"games": [], 
+	"username": "PingBot", 
+	"prefix": "$"
 }
