@@ -547,7 +547,7 @@ class Admin:
 				bot_json["bot_owners"].append(author.id)
 
 			elif "bot_owners" in bot_json and len(bot_json["bot_owners"]) > 0 and author.id not in bot_json["bot_owners"]:
-				await text(pingbot.get_message("iam_role_botowner_error"), emoji="failure")
+				await text(pingbot.get_message("iam_role_botowner_error_yourself"), emoji="failure")
 				return
 			elif author.id in bot_json["bot_owners"]:
 				await text(pingbot.get_message("iam_role_botowner_already_added_yourself"), emoji="failure")
