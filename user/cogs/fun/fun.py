@@ -6,9 +6,9 @@ from imgurpython import ImgurClient
 from PIL import Image, ImageSequence
 from core.pingbot.images2gif35 import writeGif
 import os, asyncio, random, wikipedia, discord, cairosvg, requests, re, urllib.request
-from core.pingbot import async_cfscrape as cfscrape
 from urllib.parse import quote as urlquote
 from urllib.parse import quote_plus
+import cfscrape
 
 cb_is_installed = True
 try:
