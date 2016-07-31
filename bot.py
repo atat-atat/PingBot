@@ -76,8 +76,12 @@ async def on_ready():
 	servers = []
 	for server in client.servers:
 		members += server.member_count
-		invite = await client.create_invite(server)
-		servers.append("	- {}/{} - {} ({} players)\n".format(server.name, server.id, invite, server.member_count))
+		try:
+			invite = await client.create_invite(server)
+			servers.append("	- {}/{} - {} ({} players)\n".format(server.name, server.id, invite, server.member_count))
+		except discord.errors.Forbidden:
+			servers.append("	- {}/{} - unavailable ({} players)\n".format(server.name, server.id, server.member_count))
+		
 	if len(client.servers) == 1: #grammar corrector
 		server_text = "server"
 	else:
