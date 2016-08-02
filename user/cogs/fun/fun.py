@@ -226,10 +226,10 @@ class Fun:
 		notes = self.find_notes(note_name)
 
 		if len(notes) == 0:
-			await pingbot.Utils(self.bot, ctx.message).text("I could not find a note with that word in it.", emoji=pingbot.get_emoji["failure"])
+			await pingbot.Utils(self.bot, ctx.message).text("I could not find a note with that word in it.", emoji="failure_")
 			return
 
-		await pingbot.Utils(self.bot, ctx.message).text("**Found {} notes with that word in them:** {}".format(len(notes), ', '.join(notes)))
+		await pingbot.Utils(self.bot, ctx.message).text("**Found {} notes with that word in them:** {}".format(len(notes), ', '.join(notes)), no_bold=True)
 
 	@notes.command(name="edit", aliases=["modify"], pass_context=True)
 	async def notes_edit(self, ctx, note_name : str, *, note_content : str):
@@ -547,9 +547,9 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 			topic = wikipedia.summary(query, sentences=3)
 			_topic = wikipedia.page(query)
 		except wikipedia.exceptions.PageError:
-			await text("No topics found.", emoji=pingbot.get_emoji("failure"))
+			await text("No topics found.", emoji="failure")
 			return
-		await text("**{}:** {}\n{}".format(_topic.title, topic, _topic.url), no_bold=True, emoji=pingbot.get_emoji("wikipedia"))
+		await text("**{}:** {}\n{}".format(_topic.title, topic, _topic.url), no_bold=True, emoji="wikipedia")
 
 	@commands.command(pass_context=True, name="urban")
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -683,9 +683,9 @@ Contributed  {}
 		"""
 		gif = await pingbot.giphy.get_gif(query)
 		if gif == None:
-			await text("No results found.", emoji=pingbot.get_emoji("failure"))
+			await text("No results found.", emoji="failure")
 			return
-		await text(gif.direct_embed_url, emoji=pingbot.get_emoji("success"), no_bold=True)
+		await text(gif.direct_embed_url, emoji="success", no_bold=True)
 
 	@commands.group(name="cc", aliases=["cmd"], pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
