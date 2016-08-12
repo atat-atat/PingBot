@@ -495,13 +495,13 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 		await text("Successfully changed avatar.", emoji=pingbot.get_emoji("member_update_avatar"))
 
 	@commands.command(pass_context=True)
-	async def server(self, ctx):
+	async def servers(self, ctx):
 		"""
 		⭐ Returns the amount of servers the bot is connected to.
 
 		--------------------
-		  USAGE: server
-		EXAMPLE: server
+		  USAGE: servers
+		EXAMPLE: servers
 		--------------------
 		"""
 		await text("Connected to {} servers!".format(len(self.bot.servers)), emoji="success")
