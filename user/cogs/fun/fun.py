@@ -1556,8 +1556,6 @@ Contributed  {}
 				else:
 					for reply in auto_replies["auto_replies"][msg.server.id]:
 						if reply.startswith(":"):
-							print(reply)
-							print(reply[1:])
 							if reply[1:] in msg.content:
 								#msg_content = msg.content.split()
 								#reply_instig = auto_replies
