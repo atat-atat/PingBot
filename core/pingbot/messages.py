@@ -71,9 +71,14 @@ async def text(string, **kwargs):
 	emoji = kwargs.get("emoji", None) #set the beginning emoji
 	no_mention = kwargs.get("no_mention", False) #set whether the bot should not mention the author
 	no_bold = kwargs.get("no_bold", False)
-	if 'http' in string:
+	if 'http' in string or '*' in string:
 		no_bold = True
 	no_message_limiter = kwargs.get("no_message_limiter", False)
+
+	no_auto_capitalizer = kwargs.get("no_auto_cap", False)
+	if not no_auto_capitalizer and not no_mention:
+		if not string[0].lower() == 'i':
+			string = string[0].lower() + string[1:]
 
 	if isinstance(emoji, str) and emoji != None and not emoji.startswith(":"):
 		if emoji in pingbot.Config("./core/data/emoji.json").load_json():
@@ -87,30 +92,30 @@ async def text(string, **kwargs):
 
 	if no_mention == False:
 		mention_user = kwargs.get("mention_user", bot._get_variable('_internal_author')) #if no_mention is set to False (by default,) then have the ability to set the user to mention (defaults to message author) (if you are providing a member/user object, do not add the ``mention`` property, just include the object since it automatically gets the mention property.)
-		if isinstance(mention_user, str):
-			mention_format = "<@{}>".format(mention_user)
-		else:
-			try:
-				mention_format = mention_user.mention
-			except AttributeError:
-				mention_format = mention_user
+		#if isinstance(mention_user, str):
+		mention_format = "{},".format(mention_user)
+		#else:
+		#	try:
+		#		mention_format = mention_user.mention
+		#	except AttributeError:
+		#		mention_format = mention_user
 
 	if no_bold == False:
 		if emoji != None:
 			if no_mention == False:
 				if string.endswith('```'):
 					#if no_mention is set to False, then mention the member/user
-					fmt = "{} **{}**{}".format(emoji, string, mention_format) #dont mind this
+					fmt = "{} **{} {}**".format(emoji, mention_format, string) #dont mind this
 				else:
-					fmt = "{} **{}** {}".format(emoji, string, mention_format)
+					fmt = "{} **{} {}**".format(emoji, mention_format, string)
 			else:
 				fmt = "{} **{}**".format(emoji, string) #do the opposite
 		else:
 			if no_mention == False:
 				if string.endswith('```'):
-					fmt = "**{}**{}".format(string, mention_format) #same thing here
+					fmt = "**{}** {}".format(mention_format, string) #same thing here
 				else:
-					fmt = "**{}** {}".format(string, mention_format)
+					fmt = "**{} {}**".format(mention_format, string)
 			else:
 				fmt = "**{}**".format(string)
 	else:
@@ -118,17 +123,17 @@ async def text(string, **kwargs):
 			if no_mention == False:
 				if string.endswith('```'):
 					#if no_mention is set to False, then mention the member/user
-					fmt = "{} {}{}".format(emoji, string, mention_format) #dont mind this
+					fmt = "{} {}".format(emoji, string) #dont mind this
 				else:
-					fmt = "{} {} {}".format(emoji, string, mention_format)
+					fmt = "{} **{}** {}".format(emoji, mention_format, string)
 			else:
 				fmt = "{} {}".format(emoji, string) #do the opposite
 		else:
 			if no_mention == False:
 				if string.endswith('```'):
-					fmt = "{}{}".format(string, mention_format) #same thing here
+					fmt = "**{}**{}".format(mention_format, string) #same thing here
 				else:
-					fmt = "{} {}".format(string, mention_format)
+					fmt = "**{}** {}".format(mention_format, string)
 			else:
 				fmt = "{}".format(string)
 	

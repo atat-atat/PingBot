@@ -75,7 +75,7 @@ class Fun:
 			amount_of_times = "{} times".format(len(found_messages))
 		await text("You have been mentioned {} (the messages have been sent to you via private message.)".format(amount_of_times), emoji=emoji["success"])
 
-	@commands.group(name="notes", aliases=["note"], pass_context=True)
+	@commands.group(name="notes", aliases=["note", "n"], pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def notes(self, ctx):
 		"""
@@ -88,7 +88,7 @@ class Fun:
 		"""
 		if ctx.invoked_subcommand is None:
 			if ctx.subcommand_passed == None:
-				await text("You must provide the name of the note.", emoji=pingbot.Utils().get_config_emoji("failure"))
+				await text("You must provide the name of the note.", emoji="failure")
 				return
 
 			note_name = ctx.subcommand_passed
@@ -100,9 +100,9 @@ class Fun:
 					if note_name in _note:
 						found_notes.append(_note)
 				if len(found_notes) != 0:
-					await text("I could not find that note.\nPerhaps you meant `{}`?".format(random.choice(found_notes)), emoji=pingbot.Utils().get_config_emoji("failure"))
+					await text("I could not find that note.\nPerhaps you meant `{}`?".format(random.choice(found_notes)), emoji="failure")
 				else:
-					await text("I could not find that note.", emoji=pingbot.Utils().get_config_emoji("failure"))
+					await text("I could not find that note.", emoji="failure")
 				return
 
 			if not self.member_is_in_uses(note_name, ctx.message.author.id) and not self.member_is_submitter(note_name, ctx.message.author.id):
@@ -111,7 +111,7 @@ class Fun:
 				)
 
 
-	@notes.command(name="add", aliases=["create"], pass_context=True)
+	@notes.command(name="add", aliases=["create", "c"], pass_context=True)
 	async def notes_create(self, ctx, note_name : str, *, note_content : str):
 		"""
 		🎭 Creates a note.
@@ -123,13 +123,13 @@ class Fun:
 		"""
 		notes = self.get_note(note_name)
 		if notes != None:
-			await pingbot.Utils(self.bot, ctx.message).text("That note already exists.", emoji=pingbot.Utils().get_config_emoji("failure"))
+			await text("That note already exists.", emoji="failure")
 			return
 
 		self.add_note(ctx, note_name, note_content)
-		await pingbot.Utils(self.bot, ctx.message).text("Successfully created note.", emoji=pingbot.Utils().get_config_emoji("success"))
+		await text("Successfully created note.", emoji="success")
 
-	@notes.command(name="del", aliases=["remove", "delete", "rem"], pass_context=True)
+	@notes.command(name="del", aliases=["remove", "delete", "rem", "d"], pass_context=True)
 	async def notes_remove(self, ctx, note_name : str):
 		"""
 		🎭 Deletes a note.
@@ -141,18 +141,18 @@ class Fun:
 		"""
 		note = self.get_note(note_name)
 		if note == None:
-			await pingbot.Utils(self.bot, ctx.message).text("I was unable to remove that note as it does not exist.", emoji=pingbot.get_emoji("failure"))
+			await text("I was unable to remove that note as it does not exist.", emoji="failure")
 			return
 		member_name = self.bot.get_member(note.submitter).name
 		if note.submitter != member_name and not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-			await pingbot.Utils(self.bot, ctx.message).text("You do not have permission to remove this note.", emoji=pingbot.get_emoji("failure"))
+			await text("You do not have permission to remove this note.", emoji="failure")
 			return
 
 		self.remove_note(note_name)
-		await pingbot.Utils(self.bot, ctx.message).text("Successfully removed note.", emoji=pingbot.get_emoji("success"))
+		await text("Successfully removed note.", emoji="success")
 		return
 
-	@notes.command(name="info", pass_context=True)
+	@notes.command(name="info", aliases=["i"], pass_context=True)
 	async def notes_info(self, ctx, note_name : str):
 		"""
 		🎭 Returns information about a note.
@@ -164,7 +164,7 @@ class Fun:
 		"""
 		note = self.get_note(note_name)
 		if note == None:
-			await pingbot.Utils(self.bot, ctx.message).text("I was unable to find that note.", emoji=pingbot.get_emoji("failure"))
+			await text("I was unable to find that note.", emoji="failure")
 			return
 
 		if len(note.content) > 90:
@@ -184,9 +184,9 @@ class Fun:
 **Contents:** {3}
 
 **This note has been used {2.uses_int} times!**""".format(note_name, submitter, note, content)
-		await pingbot.Utils(self.bot, ctx.message).text(fmt, no_bold=True, emoji=":bulb:")
+		await text(fmt, no_bold=True, emoji=":bulb:")
 
-	@notes.command(name="list", pass_context=True)
+	@notes.command(name="list", aliases=["l"], pass_context=True)
 	async def notes_list(self, ctx, member : discord.Member=None):
 		"""
 		🎭 Lists the notes created.
@@ -199,11 +199,10 @@ class Fun:
 		if member == None:
 			member = ctx.message.author
 
-		await self.bot.say("SC: {}".format(ctx.subcommand_passed))
 		notes_file = self.load_notes()
 		notes = self.notes_from_member(member.id)
 		if len(notes) == 0:
-			await text("That member has not submitted any notes.", emoji=pingbot.get_emoji("failure"))
+			await text("That member has not submitted any notes.", emoji="failure")
 			return
 		f_notes = []
 		f_notes_uses = 0
@@ -213,7 +212,7 @@ class Fun:
 
 		await text("**{} has submitted a total of {} notes ({} total uses):** {}".format(member.name, len(f_notes), f_notes_uses, ', '.join(f_notes)), no_bold=True, emoji=":bulb:")
 
-	@notes.command(name="search", pass_context=True)
+	@notes.command(name="search", aliases=["s"], pass_context=True)
 	async def notes_search(self, ctx, note_name : str):
 		"""
 		🎭 Searches for a note.
@@ -226,12 +225,12 @@ class Fun:
 		notes = self.find_notes(note_name)
 
 		if len(notes) == 0:
-			await pingbot.Utils(self.bot, ctx.message).text("I could not find a note with that word in it.", emoji="failure_")
+			await text("I could not find a note with that word in it.", emoji="failure")
 			return
 
-		await pingbot.Utils(self.bot, ctx.message).text("**Found {} notes with that word in them:** {}".format(len(notes), ', '.join(notes)), no_bold=True)
+		await text("**Found {} notes with that word in them:** {}".format(len(notes), ', '.join(notes)), no_bold=True)
 
-	@notes.command(name="edit", aliases=["modify"], pass_context=True)
+	@notes.command(name="edit", aliases=["modify", "e"], pass_context=True)
 	async def notes_edit(self, ctx, note_name : str, *, note_content : str):
 		"""
 		🎭 Edits a note.
@@ -243,18 +242,18 @@ class Fun:
 		"""
 		note = self.get_note(note_name)
 		if note == None:
-			await pingbot.Utils(self.bot, ctx.message).text("I was unable to access that note as it does not exist.", emoji=pingbot.get_emoji("failure"))
+			await text("I was unable to access that note as it does not exist.", emoji="failure")
 			return
 
 		member_name = ctx.message.server.get_member(note.submitter).name
 		if note.submitter != member_name and not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-			await pingbot.Utils(self.bot, ctx.message).text("You do not have permission to edit this note.", emoji=pingbot.get_emoji("failure"))
+			await text("You do not have permission to edit this note.", emoji="failure")
 			return
 
 		self.modify_note('content', note_name, note_content)
-		await pingbot.Utils(self.bot, ctx.message).text("Successfully modified note!", emoji=pingbot.get_emoji("success"))
+		await text("Successfully modified note!", emoji="success")
 
-	@notes.command(name="rename", aliases=["name", "title"], pass_context=True)
+	@notes.command(name="rename", aliases=["name", "title", "r"], pass_context=True)
 	async def notes_rename(self, ctx, old_note_name : str, new_note_name : str):
 		"""
 		🎭 Renames a note.
@@ -267,20 +266,20 @@ class Fun:
 		note = self.get_note(old_note_name)
 		new_note = self.get_note(new_note_name)
 		if note == None:
-			await pingbot.Utils(self.bot, ctx.message).text("I was unable to rename that note as it does not exist.", emoji=pingbot.get_emoji("failure"))
+			await text("I was unable to rename that note as it does not exist.", emoji="failure")
 			return
 		if new_note != None:
-			await text("That note already exists.", emoji=pingbot.get_emoji("failure"))
+			await text("That note already exists.", emoji="failure")
 			return
 		member_name = ctx.message.server.get_member(note.submitter).name
 		if note.submitter != member_name and not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-			await pingbot.Utils(self.bot, ctx.message).text("You do not have permission to edit this note.", emoji=pingbot.get_emoji("failure"))
+			await text("You do not have permission to edit this note.", emoji="failure")
 			return
 
 		self.modify_note('name', old_note_name, new_note_name)
-		await pingbot.Utils(self.bot, ctx.message).text("Successfully renamed {} to {}!".format(old_note_name, new_note_name), emoji=pingbot.get_emoji("success"))
+		await text("Successfully renamed {} to {}!".format(old_note_name, new_note_name), emoji="success")
 
-	@notes.command(name="direct_edit", pass_context=True)
+	@notes.command(name="direct_edit", aliases=["de"], pass_context=True)
 	async def notes_dedit(self, ctx, note_name : str, n_type : str, value : str):
 		"""
 		🎭 Edits a note (includes the note type.)
@@ -292,15 +291,26 @@ class Fun:
 		"""
 		note = self.get_note(note_name)
 		if note == None:
-			await text("That note doesn't exist.", emoji=pingbot.get_emoji("failure"))
+			await text("That note doesn't exist.", emoji="failure")
 			return
 		member_name = ctx.message.server.get_member(note.submitter).name
 		if note.submitter != member_name and not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-			await pingbot.Utils(self.bot, ctx.message).text("You do not have permission to edit this note.", emoji=pingbot.get_emoji("failure"))
+			await text("You do not have permission to edit this note.", emoji="failure")
 			return
 
 		self.modify_note(n_type, note_name, value)
-		await text("Successfully modified note.", emoji=pingbot.get_emoji("success"))
+		await text("Successfully modified note.", emoji="success")
+
+	@notes.command(name="all", aliases=["a"], pass_context=True)
+	async def notes_all(self, ctx):
+		"""
+		🎭 Lists all notes that have been created.
+
+		--------------------
+		  USAGE: notes all
+		EXAMPLE: notes all
+		--------------------
+		"""
 
 	@commands.command(name="profile", pass_context=True, no_pm=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -319,7 +329,7 @@ class Fun:
 
 		profile = self.get_profile(ctx.message.server.id, member.id)
 		if profile == None:
-			await text("That profile does not exist.", emoji=pingbot.get_emoji("failure"))
+			await text("That profile does not exist.", emoji="failure")
 			return
 
 		if len(profile.games.keys()) == 0:
@@ -388,7 +398,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 
 		games = sorted(_games, key=_games.get, reverse=True)
 		if len(games) == 0:
-			await text("No games have been logged on this server yet.", emoji=pingbot.get_emoji("failure"))
+			await text("No games have been logged on this server yet.", emoji="failure")
 			return
 		fmt = ""
 		if len(games) > 30:
@@ -423,7 +433,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 
 		messages = sorted(_messages, key=_messages.get, reverse=True)
 		if len(messages) == 0:
-			await text("No messages have been logged on this server yet.", emoji=pingbot.get_emoji("failure"))
+			await text("No messages have been logged on this server yet.", emoji="failure")
 			return
 		fmt = ""
 		if len(messages) > 30:
@@ -452,12 +462,12 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		self.setup_profile_server_ifno(ctx.message.server.id)
 		stats_json = self.load_stats()
 		if ctx.message.server.id not in stats_json:
-			await text("I have not logged any commands on this server yet.", emoji=pingbot.get_emoji("failure"))
+			await text("I have not logged any commands on this server yet.", emoji="failure")
 			return
 		
 		stats = sorted(stats_json[ctx.message.server.id]["commands_used"]["overall"], key=stats_json[ctx.message.server.id]["commands_used"]["overall"].get, reverse=True)
 		if len(stats) == 0:
-			await text("No command usages have been logged on this server yet.", emoji=pingbot.get_emoji("failure"))
+			await text("No command usages have been logged on this server yet.", emoji="failure")
 			return
 		fmt = ""
 		if len(stats) > 30:
@@ -492,7 +502,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 
 		notes = sorted(_notes, key=_notes.get, reverse=True)
 		if len(notes) == 0:
-			await text("No notes have been used on this server yet.", emoji=pingbot.get_emoji("failure"))
+			await text("No notes have been used on this server yet.", emoji="failure")
 			return
 		fmt = ""
 		if len(notes) > 30:
@@ -520,7 +530,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 		"""
 		movie = await pingbot.omdb.get_movie(title)
 		if movie == None:
-			await text("I could not find information about that movie or TV show.", emoji=pingbot.get_emoji("failure"))
+			await text("I could not find information about that movie or TV show.", emoji="failure")
 			return
 
 		fmt = """ {0.poster}
@@ -530,7 +540,7 @@ Most used command: {3}```""".format(member.name, profile, games, most_used_comma
 **Awards:** {0.awards}
 **Actors:** {0.actors}
 **Plot:** {0.plot}""".format(movie)
-		await text(fmt, no_bold=True, emoji=pingbot.get_emoji("movie"))
+		await text(fmt, no_bold=True, emoji="movie")
 
 	@commands.command(name="wikipedia", aliases=["wiki"])
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -576,13 +586,11 @@ Contributed  {}
 		if len(fmt) >= 2000:
 			fmt = pingbot.Utils().string_chunk(fmt, '1000')
 
-		if isinstance(fmt, list):
-			for i in fmt:
-				await pingbot.Utils(self.bot, ctx.message).text(i)
-		else:
-			await text(fmt)
-
-		#await pingbot.Utils(self.bot, ctx.message).text(fmt)
+		#if isinstance(fmt, list):
+		#	for i in fmt:
+		#		await text(i)
+		#else:
+		await text(fmt)
 
 	@commands.command(pass_context=True, name="anime")
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -634,7 +642,7 @@ Contributed  {}
 **Score:** {0.score}/10
 	{4}""".format(anime, english_name, synonyms, dates, synopsis)
 
-		await pingbot.Utils(self.bot, ctx.message).text(fmt, emoji=pingbot.get_emoji("anime"), no_bold=True)
+		await text(fmt, emoji="anime", no_bold=True)
 
 	@commands.command(name="osu", pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -652,7 +660,7 @@ Contributed  {}
 
 		if osu_info == None:
 			osu_user_not_found = pingbot.Utils().get_config_message("osu_user_not_found")
-			await pingbot.Utils(self.bot, ctx.message).text(osu_user_not_found, emoji=pingbot.Utils().get_config_emoji("failure"))
+			await text(osu_user_not_found, emoji=pingbot.Utils().get_config_emoji("failure"))
 			return
 
 		flag = ":flag_" + osu_info.country.lower() + ":"
@@ -668,7 +676,7 @@ Contributed  {}
 **`{0.count_rank_ss}` SS', `{0.count_rank_s}` S', `{0.count_rank_a}` A's**
 {0.user_profile}
 """.format(osu_info, flag)
-		await pingbot.Utils(self.bot, ctx.message).text(fmt, emoji=":red_circle:", no_bold=True)
+		await text(fmt, emoji=":red_circle:", no_bold=True)
 
 	@commands.command(name="gif", aliases=["giphy"])
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -687,7 +695,7 @@ Contributed  {}
 			return
 		await text(gif.direct_embed_url, emoji="success", no_bold=True)
 
-	@commands.group(name="cc", aliases=["cmd"], pass_context=True)
+	@commands.group(name="cc", aliases=["cmd", "customcom"], pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def customcom(self, ctx):
 		"""
@@ -699,9 +707,9 @@ Contributed  {}
 		--------------------
 		"""
 		if ctx.invoked_subcommand is None:
-			await text("You must provide a subcommand.", emoji=pingbot.get_emoji("failure"))
+			await text("You must provide a subcommand.", emoji="failure")
 
-	@customcom.command(name="create", pass_context=True)
+	@customcom.command(name="create", aliases=["c"], pass_context=True)
 	async def cc_create(self, ctx, name : str, content : str):
 		"""
 		🎭 Creates a custom command.
@@ -713,7 +721,7 @@ Contributed  {}
 		"""
 		cmd_json = self.load_commands()
 		if name in self.bot.commands or name in cmd_json:
-			await text("That command already exists.", emoji=pingbot.get_emoji("failure"))
+			await text("That command already exists.", emoji="failure")
 			return
 
 		cmd_json[name] = {}
@@ -724,9 +732,9 @@ Contributed  {}
 		cmd_json[name]["disabled"] = []
 		self.write_command(cmd_json)
 
-		await text("Successfully created command!", emoji=pingbot.get_emoji("success"))
+		await text("Successfully created command!", emoji="success")
 
-	@customcom.command(name="delete", aliases=["remove", "del", "rem"], pass_context=True)
+	@customcom.command(name="delete", aliases=["remove", "del", "rem", "d"], pass_context=True)
 	async def cc_del(self, ctx, name : str):
 		"""
 		🎭 Deletes a custom command.
@@ -738,18 +746,18 @@ Contributed  {}
 		"""
 		cmd_json = self.load_commands()
 		if name not in cmd_json:
-			await text("That command doesn't exist.", emoji=pingbot.get_emoji("failure"))
+			await text("That command doesn't exist.", emoji="failure")
 			return
 
 		if not ctx.message.author.id == cmd_json[name]["creator"] and not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
-			await text(no_perm, emoji=pingbot.get_emoji("failure"))
+			await text(no_perm, emoji="failure")
 			return
 
 		cmd_json.pop(name)
 		self.write_command(cmd_json)
-		await text("Successfully deleted command.", emoji=pingbot.get_emoji("success"))
+		await text("Successfully deleted command.", emoji="success")
 
-	@customcom.command(name="edit", aliases=["modify"], pass_context=True)
+	@customcom.command(name="edit", aliases=["modify", "e"], pass_context=True)
 	async def cc_edit(self, ctx, name : str, content : str):
 		"""
 		🎭 Modifies a custom command.
@@ -761,15 +769,15 @@ Contributed  {}
 		"""
 		cmd_json = self.load_commands()
 		if name not in cmd_json:
-			await text("That command doesn't exist.", emoji=pingbot.get_emoji("failure"))
+			await text("That command doesn't exist.", emoji="failure")
 			return
 
 		cmd_json[name]["content"] = content
 		self.write_command(cmd_json)
 
-		await text("Successfully modified command!", emoji=pingbot.get_emoji("success"))
+		await text("Successfully modified command!", emoji="success")
 
-	@customcom.command(name="rename", pass_context=True)
+	@customcom.command(name="rename", aliases=["r"], pass_context=True)
 	async def cc_rename(self, ctx, old_name : str, new_name : str):
 		"""
 		🎭 Renames a custom command.
@@ -781,7 +789,7 @@ Contributed  {}
 		"""
 		cmd_json = self.load_commands()
 		if name not in cmd_json:
-			await text("That command doesn't exist.", emoji=pingbot.get_emoji("failure"))
+			await text("That command doesn't exist.", emoji="failure")
 			return
 
 		old_cmd = cmd_json[old_name]
@@ -795,9 +803,9 @@ Contributed  {}
 		cmd_json[new_name]["disabled"] = old_cmd["disabled"]
 		self.write_command(cmd_json)
 
-		await text("Successfully renamed command from {} to {}!".format(old_name, new_name), emoji=pingbot.get_emoji("success"))
+		await text("Successfully renamed command from {} to {}!".format(old_name, new_name), emoji="success")
 
-	@customcom.command(name="info", aliases=["show"], pass_context=True)
+	@customcom.command(name="info", aliases=["show", "i"], pass_context=True)
 	async def cc_info(self, ctx, name : str):
 		"""
 		🎭 Shows information about a custom command.
@@ -809,7 +817,7 @@ Contributed  {}
 		"""
 		cmd = self.get_command(name)
 		if cmd == None:
-			await text("That command doesn't exist.", emoji=pingbot.get_emoji("failure"))
+			await text("That command doesn't exist.", emoji="failure")
 			return
 
 		if len(cmd.content) > 90:
@@ -831,7 +839,7 @@ Contributed  {}
 **This note has been used {2.uses_int} times!**""".format(name, creator, cmd, content)
 		await text(fmt, emoji=":bulb:", no_bold=True)
 
-	@customcom.command(name="list", pass_context=True)
+	@customcom.command(name="list", aliases=["l"], pass_context=True)
 	async def cc_list(self, ctx, member : discord.Member=None):
 		"""
 		🎭 Returns a list of custom commands that you, or another member created.
@@ -852,12 +860,12 @@ Contributed  {}
 				commands.append(command)
 
 		if len(commands) == 0:
-			await text("You have not made any commands yet.", emoji=pingbot.get_emoji("failure"))
+			await text("You have not made any commands yet.", emoji="failure")
 			return
 
-		await text("**{} has created {} commands:** {}".format(member.name, len(commands), ", ".join(commands)), emoji=pingbot.get_emoji("success"), no_bold=True)
+		await text("**{} has created {} commands:** {}".format(member.name, len(commands), ", ".join(commands)), emoji="success", no_bold=True)
 
-	@customcom.command(name="search", aliases=["find"], pass_context=True)
+	@customcom.command(name="search", aliases=["find", "s"], pass_context=True)
 	async def cc_search(self, ctx, keyword : str):
 		"""
 		🎭 Returns a custom command based on a keyword.
@@ -875,10 +883,10 @@ Contributed  {}
 				commands.append(command)
 
 		if len(commands) == 0:
-			await text("Your search yielded no results.", emoji=pingbot.get_emoji("failure"))
+			await text("Your search yielded no results.", emoji="failure")
 			return
 
-		await text("**{} commands found:** {}".format(len(commands), ", ".join(commands)), no_bold=True, emoji=pingbot.get_emoji("success"))
+		await text("**{} commands found:** {}".format(len(commands), ", ".join(commands)), no_bold=True, emoji="success")
 
 	@commands.group(name="imgur", pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -897,9 +905,9 @@ Contributed  {}
 			try:
 				result = random.choice(results).link
 			except IndexError:
-				await text("That query yielded no results.", emoji=pingbot.get_emoji("failure"))
+				await text("That query yielded no results.", emoji="failure")
 				return
-			await text(result, emoji=pingbot.get_emoji("park"), no_bold=True)
+			await text(result, emoji="park", no_bold=True)
 
 	@imgur.command(name="sub")
 	async def imgur_sub(self, subreddit : str):
@@ -917,9 +925,9 @@ Contributed  {}
 			result2 = random.choice(results).link
 			result3 = random.choice(results).link
 		except IndexError:
-				await text("That query yielded no results.", emoji=pingbot.get_emoji("failure"))
+				await text("That query yielded no results.", emoji="failure")
 				return
-		await text("{}\n{}\n{}".format(result1, result2, result3), emoji=pingbot.get_emoji("park"), no_bold=True)
+		await text("{}\n{}\n{}".format(result1, result2, result3), emoji="park", no_bold=True)
 
 	@commands.command(name="cat")
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -935,7 +943,7 @@ Contributed  {}
 		url = "http://random.cat/meow"
 		resp = await pingbot.WT().async_json_content(url)
 		cat_pic = resp["file"]
-		await text(cat_pic, no_bold=True, emoji=pingbot.get_emoji("cat"))
+		await text(cat_pic, no_bold=True, emoji="cat")
 
 	@commands.command(name="8ball")
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -968,7 +976,7 @@ Contributed  {}
 "My reply is no.",
 "Outlook good.",
 "Don't count on it."]
-		await text(random.choice(eight_ball_answers), emoji=pingbot.get_emoji("8ball"))
+		await text(random.choice(eight_ball_answers), emoji="8ball")
 
 	@commands.command(name="flip", aliases=["flipcoin", "coinflip"], pass_context=True)
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -985,7 +993,7 @@ Contributed  {}
 		msg = await self.bot.send_message(ctx.message.channel, "*I threw a coin and...*")
 		asyncio.sleep(8)
 		await self.bot.delete_message(msg)
-		await text("**{}**".format(random.choice(choices)), emoji=pingbot.get_emoji("coin_flip"))
+		await text("**{}**".format(random.choice(choices)), emoji="coin_flip")
 
 	@commands.command(name="roll", aliases=["dice"])
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -1009,7 +1017,7 @@ Contributed  {}
 				limit = 6
 
 		result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
-		await text(result, emoji=pingbot.get_emoji("dice"))
+		await text(result, emoji="dice")
 
 	@commands.command()
 	@pingbot.permissions.has_permissions(send_messages=True)
@@ -1543,17 +1551,22 @@ Contributed  {}
 		auto_replies = pingbot.Config('./user/cogs/fun/fun_info.json').load_json()
 		if msg.author != self.bot.user and not msg.author.bot:
 			if not msg.channel.is_private and msg.server.id in auto_replies["auto_replies"]:
-				if msg.content in auto_replies["auto_replies"][msg.server.id]:
+				if msg.content in auto_replies["auto_replies"][msg.server.id] and not msg.content.startswith(":"):
 					await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][msg.content])
 				else:
 					for reply in auto_replies["auto_replies"][msg.server.id]:
 						if reply.startswith(":"):
-							msg_content = msg.content.split()
-							#reply_instig = auto_replies
-							#reply = auto_replies["auto_replies"][reply]
-							_reply = reply[len(":"):]
-							if _reply in msg_content:
-								await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][reply])
+							print(reply)
+							print(reply[1:])
+							if reply[1:] in msg.content:
+								#msg_content = msg.content.split()
+								#reply_instig = auto_replies
+								#reply = auto_replies["auto_replies"][reply]
+								#reply = reply[]
+								if "}" in auto_replies["auto_replies"][msg.server.id][reply]:
+									await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][reply].format(msg.author))
+								else:
+									await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][reply])
 								return
 
 	async def fun_member_update(self, before, after):
@@ -1643,7 +1656,7 @@ Contributed  {}
 
 	async def is_disabled(self, ctx, *args):
 		if pingbot.Utils().cmd_is_disabled_list_form(ctx, list(args)):
-			await pingbot.Utils(self.bot, ctx.message).text(cmd_disabled, emoji=emoji["failure"])
+			await text(cmd_disabled, emoji=emoji["failure"])
 			return True
 
 	def edit_server_settings(self, server, key, value):
