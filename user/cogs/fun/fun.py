@@ -603,12 +603,10 @@ Contributed  {}
 		EXAMPLE: anime kiznaiver
 		--------------------
 		"""
-		print("Getting anime")
 		anime = pingbot.myanimelist.get_anime(query)
-		print("Found anime")
 		if anime == None:
 			anime_not_found = pingbot.Utils().get_config_message("anime_not_found")
-			await text("Test1", emoji=pingbot.Utils().get_config_emoji("failure"))
+			await text(anime_not_found, emoji=pingbot.Utils().get_config_emoji("failure"))
 			return
 
 		#theres probably a better way of doing this but i cant be fucked to actually think right now
