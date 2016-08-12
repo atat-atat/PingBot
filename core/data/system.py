@@ -308,8 +308,10 @@ ID: {}
 Invite: {}
 Uptime: {}
 
+Connected to {} servers!
+
 Cogs: {}
-Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self.bot.user.id, discord.utils.oauth_url(self.bot.client_id, perms), self.bot_uptime(), len(self.bot.extensions.keys()), len(self.bot.commands.keys()))
+Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self.bot.user.id, discord.utils.oauth_url(self.bot.client_id, perms), self.bot_uptime(), len(self.bot.servers), len(self.bot.extensions.keys()), len(self.bot.commands.keys()))
 		await text(fmt)
 
 	@commands.group(name="bot", pass_context=True)
@@ -345,8 +347,10 @@ ID: {}
 Invite: {}
 Uptime: {}
 
+Connected to {} servers!
+
 Cogs: {}
-Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self.bot.user.id, discord.utils.oauth_url(self.bot.client_id, perms), self.bot_uptime(), len(self.bot.extensions.keys()), len(self.bot.commands.keys()))
+Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self.bot.user.id, discord.utils.oauth_url(self.bot.client_id, perms), self.bot_uptime(), len(self.bot.servers), len(self.bot.extensions.keys()), len(self.bot.commands.keys()))
 			await text(fmt)
 
 	@_bot.command(name="name", aliases=["change_name", "change-name"], pass_context=True)
@@ -489,6 +493,18 @@ Commands: {}```""".format(self.bot.description, "Test", self.bot.user.name, self
 			return
 
 		await text("Successfully changed avatar.", emoji=pingbot.get_emoji("member_update_avatar"))
+
+	@commands.command(pass_context=True)
+	async def server(self, ctx):
+		"""
+		⭐ Returns the amount of servers the bot is connected to.
+
+		--------------------
+		  USAGE: server
+		EXAMPLE: server
+		--------------------
+		"""
+		await text("Connected to {} servers!".format(len(self.bot.servers)), emoji="success")
 
 	@commands.group(pass_context=True)
 	@pingbot.permissions.is_bot_owner()
