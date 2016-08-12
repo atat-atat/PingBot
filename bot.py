@@ -134,7 +134,10 @@ async def on_message(msg):
 
 	if msg.content.startswith(cmd_prefix):
 		command = msg.content[len(cmd_prefix):]
-		command = command.split()[0]
+		try:
+			command = command.split()[0]
+		except IndexError:
+			return
 		if command in pingbot.Config("./user/cogs/fun/customcommands.json").load_json():
 			if msg.author.id not in pingbot.Config("./user/cogs/fun/customcommands.json").load_json()[command]["disabled"] and msg.channel.id not in pingbot.Config("./user/cogs/fun/customcommands.json").load_json()[command]["disabled"]:
 				pingbot.Utils().cprint("green", cmd_output + command)

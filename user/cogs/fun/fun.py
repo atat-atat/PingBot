@@ -1469,7 +1469,10 @@ Contributed  {}
 		if msg.content.startswith(cmd_prefix):
 			cmd_json = self.load_commands()
 			command = msg.content[len(cmd_prefix):]
-			command = command.split()[0]
+			try:
+				command = command.split()[0]
+			except IndexError:
+				return
 			if command in cmd_json:
 				if msg.author.id not in cmd_json[command]["disabled"] and msg.channel.id not in cmd_json[command]["disabled"]:
 					if command not in self.bot.commands:
@@ -1552,7 +1555,11 @@ Contributed  {}
 		if msg.author != self.bot.user and not msg.author.bot:
 			if not msg.channel.is_private and msg.server.id in auto_replies["auto_replies"]:
 				if msg.content in auto_replies["auto_replies"][msg.server.id] and not msg.content.startswith(":"):
-					await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][msg.content])
+					print(msg.content)
+					if "}" in auto_replies["auto_replies"][msg.server.id][msg.content]:
+						await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][msg.content].format(msg.author))
+					else:
+						await self.bot.send_message(msg.channel, auto_replies["auto_replies"][msg.server.id][msg.content])
 				else:
 					for reply in auto_replies["auto_replies"][msg.server.id]:
 						if reply.startswith(":"):
