@@ -1,5 +1,5 @@
 from core import pingbot
-from core.pingbot.messages import text
+from core.pingbot.messages import text, send_help_message
 from discord.ext import commands
 from bs4 import BeautifulSoup
 from imgurpython import ImgurClient
@@ -129,7 +129,8 @@ class Fun:
 		self.add_note(ctx, note_name, note_content)
 		await text("Successfully created note.", emoji="success")
 
-	@notes.command(name="del", aliases=["remove", "delete", "rem", "d"], pass_context=True)
+	@notes.command(name="del", aliases=["remove", "delete", "rem", "d"], pass_context=True, no_pm=True)
+	@pingbot.permissions.has_permissions(manage_server=True)
 	async def notes_remove(self, ctx, note_name : str):
 		"""
 		🎭 Deletes a note.
@@ -143,8 +144,8 @@ class Fun:
 		if note == None:
 			await text("I was unable to remove that note as it does not exist.", emoji="failure")
 			return
-		member_name = self.bot.get_member(note.submitter).name
-		if note.submitter != member_name and not pingbot.permissions.can_ms(ctx.message.author) and not pingbot.permissions.is_serv_owner(ctx.message.author, ctx) and not pingbot.permissions.is_bot_owner(ctx.message.author):
+		#member_name = ctx.message.server.get_member(note.submitter).name
+		if note.submitter != ctx.message.author.id:
 			await text("You do not have permission to remove this note.", emoji="failure")
 			return
 
@@ -697,7 +698,7 @@ Contributed  {}
 	@pingbot.permissions.has_permissions(send_messages=True)
 	async def customcom(self, ctx):
 		"""
-		🎭 Custom command management commands.
+		🎭 Create, modify, and remove custom commands.
 
 		--------------------
 		  USAGE: cc <subcommand>
@@ -705,9 +706,9 @@ Contributed  {}
 		--------------------
 		"""
 		if ctx.invoked_subcommand is None:
-			await text("You must provide a subcommand.", emoji="failure")
+			await send_help_message(ctx, "cc", no_pm=True)
 
-	@customcom.command(name="create", aliases=["c"], pass_context=True)
+	@customcom.command(name="create", aliases=["c", "add", "a"], pass_context=True)
 	async def cc_create(self, ctx, name : str, content : str):
 		"""
 		🎭 Creates a custom command.
@@ -1205,6 +1206,11 @@ Contributed  {}
 		r = requests.get(url)
 		soup = BeautifulSoup(r.text, "html.parser")
 
+		if soup.find('cite').text.startswith(('https://', 'http://')):
+			result = soup.find('cite').text
+		else:
+			result = "https://{}".format(soup.find('cite').text)
+
 		await text("https://{}".format(soup.find('cite').text))
 
 	@commands.command(pass_context=True)
@@ -1443,6 +1449,33 @@ Contributed  {}
 
 		await text(resp["archived_snapshots"]["closest"]["url"])
 
+	@commands.group(pass_context=True)
+	async def waifu(self, ctx):
+		"""
+		Returns Ping's personal waifu pick.
+
+		--------------------
+		  USAGE: waifu <optional: subcommand>
+		EXAMPLE: waifu
+		--------------------
+		"""
+		default = {
+			"waifus": {},
+			"husbandos": {}
+		}
+		if ctx.invoked_subcommand is None:
+			acp_json = pingbot.config.jsonIO("./user/cogs/fun/fun.py", default_data=default)
+			fun_json = pingbot.config.jsonIO("./user/cogs/fun/fun_info.json")
+
+			if fun_json["waifu"] != None:
+				await text("My waifu is {}!".format(fun_json["waifu"]))
+				return
+			else:
+				if len(acp_json["waifus"]) == 0:
+					await text("I don't have any waifus.", emoji="failure")
+					return
+				await text("")
+
 #---------------- Events ----------------#
 
 	async def fun_message_listener(self, msg):
@@ -1484,19 +1517,22 @@ Contributed  {}
 
 						if isinstance(cmd_content, list):
 							value = random.choice(cmd_content)
-							if ' ' not in value and 'http://' in value or 'https://' in value:
-								if 'tumblr.com' not in value:
-									images = await pingbot.WT().retrieve_html_images(value)
-									if len(images) == 0:
-										cmd_content = value
+							if ' ' not in value and 'http://' in value or 'https://' in value and "i.imgur.com" not in value:
+								try:
+									if 'tumblr.com' not in value:
+										images = await pingbot.WT().retrieve_html_images(value)
+										if len(images) == 0:
+											cmd_content = value
+										else:
+											cmd_content = random.choice(images)
 									else:
-										cmd_content = random.choice(images)
-								else:
-									images = await pingbot.WT().retrieve_html_images(value, tumblr=True)
-									if len(images) == 0:
-										cmd_content = value
-									else:
-										cmd_content = random.choice(images)
+										images = await pingbot.WT().retrieve_html_images(value, tumblr=True)
+										if len(images) == 0:
+											cmd_content = value
+										else:
+											cmd_content = random.choice(images)
+								except:
+									cmd_content = cmd_json[command]["content"]
 							elif value.startswith('subreddit:'):
 								subreddit = value[len("subreddit:"):]
 								results = pingbot.WT().return_subreddit_result(subreddit)
@@ -1508,26 +1544,34 @@ Contributed  {}
 								cmd_content = value
 						else:
 							if ' ' not in cmd_json[command]["content"] and 'http://' in cmd_json[command]["content"] or 'https://' in cmd_json[command]["content"] and '.tumblr.' not in cmd_json[command]["content"]:
-								images = await pingbot.WT().retrieve_html_images(cmd_json[command]["content"])
-								if len(images) == 0:
-									print("No images found")
+								try:
+									images = await pingbot.WT().retrieve_html_images(cmd_json[command]["content"])
+									if len(images) == 0:
+										cmd_content = cmd_json[command]["content"]
+									else:
+										cmd_content = random.choice(images)
+								except:
 									cmd_content = cmd_json[command]["content"]
-								else:
-									cmd_content = random.choice(images)
 							elif '.tumblr.' in cmd_json[command]["content"]:
-								images = await pingbot.WT().retrieve_html_images(cmd_json[command]["content"], tumblr=True)
-								if len(images) == 0:
+								try:
+									images = await pingbot.WT().retrieve_html_images(cmd_json[command]["content"], tumblr=True)
+									if len(images) == 0:
+										cmd_content = cmd_json[command]["content"]
+									else:
+										cmd_content = random.choice(images)
+								except:
 									cmd_content = cmd_json[command]["content"]
-								else:
-									cmd_content = random.choice(images)
 							elif cmd_json[command]["content"].startswith('subreddit:'):
-								subreddit = cmd_json[command]["content"]
-								subreddit = subreddit[len("subreddit:"):]
-								results = pingbot.WT().return_subreddit_result(subreddit)
-								if results == None:
+								try:
+									subreddit = cmd_json[command]["content"]
+									subreddit = subreddit[len("subreddit:"):]
+									results = pingbot.WT().return_subreddit_result(subreddit)
+									if results == None:
+										cmd_content = cmd_json[command]["content"]
+									else:
+										cmd_content = (random.choice(results)).link
+								except:
 									cmd_content = cmd_json[command]["content"]
-								else:
-									cmd_content = (random.choice(results)).link
 							else:
 								cmd_content = cmd_json[command]["content"]
 						await self.bot.send_message(msg.channel, cmd_content)
