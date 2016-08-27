@@ -501,8 +501,8 @@ class Admin:
 			if role.permissions.use_voice_activation:
 				power += 1
 
-			if role.permissions.change_nicknames:
-				power += 2
+			#if role.permissions.change_nicknames:
+			#	power += 2
 
 			if role.permissions.manage_nicknames:
 				power += 30
